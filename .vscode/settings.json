@@ -9,7 +9,7 @@
         "app/db/models/__pycache__": true,
         "app/db/models/__init__.py": true,
         "app/db/__pycache__": true,
-        ".venv": false,
+        ".venv": true,
         ".vscode": true,
         "app/__pycache__": true,
         "app/bot/__pycache__": true,
@@ -27,7 +27,9 @@
         "app/bot/utils/__init__.py": true,
         "app/bot/utils/__pycache__": true,
         ".git": true,
-        ".git/info": true
+        ".git/info": true,
+        ".env": true,
+        "logs.txt": true
     },
     "hide-files.files": [],
     "CodeGPT.apiKey": "CodeGPT Plus Beta"

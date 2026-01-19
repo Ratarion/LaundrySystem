@@ -325,8 +325,6 @@ async def process_exit(callback: CallbackQuery, state: FSMContext):
     # 1. Получаем пользователя из БД по Telegram ID
     user = await get_user_by_tg_id(callback.from_user.id)
 
-    # 3. Диагностика (по желанию, чтобы убедиться в логах)
-    logging.info(f"DB Name: {user.first_name} | TG Name: {callback.from_user.first_name}")
 
     # 4. ВАЖНО: Берем имя ИМЕННО из объекта user (из БД)
     # user.first_name — это имя из базы (Инцзе)
