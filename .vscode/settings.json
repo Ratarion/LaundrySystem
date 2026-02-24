@@ -4,13 +4,14 @@
         "stats.html": true,
         "booking.html": true,
         "check_machines.html": true,
-        "check_residents.html": true,
-        "index.html": true,
+        "check_residents.html": false,
+        "index.html": false,
         "machines.html ": true,
         "notifications.html": true,
         "sockets.html": true,
         "js": true,
         "img": true,
-        "css": true
+        "css": true,
+        ".vscode": true
     }
 }
