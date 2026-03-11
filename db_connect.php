@@ -1,31 +1,51 @@
 <?php
+// db_connect.php — ЕДИНСТВЕННОЕ место подключения к Supabase + логирование
 
-require_once __DIR__ . '/vendor/autoload.php'; // Подключаем автозагрузчик Composer
+// 1. Подключение логгер 
+require_once __DIR__ . '/logger.php';
 
-// Загружаем переменные окружения из .env
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+// 2. Подключаем автозагрузчик Composer и .env
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Dotenv\Dotenv;
+
+$dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-$host     = $_ENV['DB_HOST']; //Хостт
-$port     = $_ENV['DB_PORT']; //Порт
-$dbname   = $_ENV['DB_NAME']; //Имя БД
-$user     = $_ENV['DB_USER']; //Пользователь
-$password = $_ENV['DB_PASS']; //Пароль
+// 3. Переменные из .env
+$host     = $_ENV['DB_HOST'];
+$port     = $_ENV['DB_PORT'];
+$dbname   = $_ENV['DB_NAME'];
+$user     = $_ENV['DB_USER'];
+// $password = $_ENV['DB_PASS']; 
 
-// Формируем строку подключения (DSN)
+if (empty($password)) {
+    $log->critical('В .env нет DB_PASS! Проверь файл .env');
+    die('Ошибка: не указан пароль БД в .env');
+}
+
+// 4. DSN для Supabase
 $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
 
 try {
-    // Создаем объект PDO
     $pdo = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Ошибки будут вызывать исключения
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Данные возвращаются в виде массивов
-        PDO::ATTR_EMULATE_PREPARES   => false,                  // Реальная защита от SQL-инъекций
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Данные возвращаются в виде массивов
+        PDO::ATTR_EMULATE_PREPARES   => false, // Реальная защита от SQL-инъекций
     ]);
 
-    echo "Ура! Подключение к Supabase успешно установлено.";
+    $log->info('✅ Подключение к Supabase успешно установлено', [
+        'dbname' => $dbname,
+        'host'   => $host
+    ]);
+
+    return $pdo;   // ← Возвращаем $pdo для использования в index.php и других файлах
 
 } catch (PDOException $e) {
-    // В случае ошибки выводим её на экран
-    die("Ошибка подключения: " . $e->getMessage());
+    $log->error('❌ Ошибка подключения к Supabase', [
+        'message' => $e->getMessage(),
+        'code'    => $e->getCode()
+    ]);
+    
+    die('Ошибка подключения к базе. Смотри файл logs/error.log');
 }
