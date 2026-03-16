@@ -17,7 +17,7 @@ $host     = $_ENV['DB_HOST'];
 $port     = $_ENV['DB_PORT'];
 $dbname   = $_ENV['DB_NAME'];
 $user     = $_ENV['DB_USER'];
-// $password = $_ENV['DB_PASS']; 
+$password = $_ENV['DB_PASS']; 
 
 if (empty($password)) {
     $log->critical('В .env нет DB_PASS! Проверь файл .env');
@@ -30,9 +30,16 @@ $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
 try {
     $pdo = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Ошибки будут вызывать исключения
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Данные возвращаются в виде массивов
-        PDO::ATTR_EMULATE_PREPARES   => false, // Реальная защита от SQL-инъекций
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Данные возвращаются в виде массивов
+        PDO::ATTR_EMULATE_PREPARES   => false,                  // Реальная защита от SQL-инъекций
     ]);
+
+    if (!($pdo instanceof PDO)) {
+        $log->critical('Созданный объект не является PDO!');
+        die('Критическая ошибка: объект PDO не создан.');
+    }
+    
+    $GLOBALS['pdo'] = $pdo; // сохраняем глобально, чтобы require_once не сломал
 
     $log->info('✅ Подключение к Supabase успешно установлено', [
         'dbname' => $dbname,
