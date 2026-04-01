@@ -1,9 +1,10 @@
 <?php
-// templates/navbar.php — динамическое активное меню
+// templates/navbar.php — меню с учётом роли
 $current_uri = $_SERVER['REQUEST_URI'] ?? '/';
+$isAdmin = ($_SESSION['role'] ?? 0) === 1;
 ?>
 
-<nav style="width: 190px; background: #1f1f1f; padding: 20px 0; height: 100vh; color: #fff; box-shadow: 4px 0 12px rgba(0,0,0,0.3);">
+<nav style="width: 250px; background: #1f1f1f; padding: 20px 0; height: 100vh; color: #fff; box-shadow: 4px 0 12px rgba(0,0,0,0.3);">
 
     <h2 style="padding: 0 24px 24px; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.5px;">
         Меню
@@ -11,12 +12,14 @@ $current_uri = $_SERVER['REQUEST_URI'] ?? '/';
 
     <ul style="list-style: none; padding: 0; margin: 0;">
         
+        <?php if ($isAdmin): ?>
         <li>
             <a href="/stats" class="menu-link <?= strpos($current_uri, '/stats') !== false ? 'active' : '' ?>">
                 📊 <span>Статистика</span>
             </a>
         </li>
-        
+        <?php endif; ?>
+
         <li>
             <a href="/machines" class="menu-link <?= strpos($current_uri, '/machines') !== false ? 'active' : '' ?>">
                 🛠️ <span>Техника</span>
@@ -48,6 +51,5 @@ $current_uri = $_SERVER['REQUEST_URI'] ?? '/';
             </a>
         </li>
         <?php endif; ?>
-        
     </ul>
 </nav>
