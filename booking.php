@@ -125,37 +125,59 @@ $bookings = $stmt->fetchAll();
     </div>
 
     <!-- ФОРМА ФИЛЬТРОВ -->
-    <form method="POST" class="filter-form">
-        <label>Статус: 
-            <select name="status">
+    <form method="POST" style="background:#1f1f1f; padding:25px; border-radius:12px; margin-bottom:30px; display:flex; gap:15px; align-items:end; flex-wrap:wrap;">
+        <label style="flex:1;">
+            Статус<br>
+            <select name="status" style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
                 <option value="">Все</option>
                 <option value="Ожидание">Ожидание</option>
+                <option value="Подверженная">Подтверждено</option>
                 <option value="Отмена">Отмена</option>
-                <option value="Подверженная">Подверженная</option>
                 <option value="cancelled">Отменено</option>
             </select>
         </label>
-        <label>Дата с: <input type="date" name="date_from" value="<?= $_POST['date_from'] ?? '' ?>"></label>
-        <label>Дата по: <input type="date" name="date_to" value="<?= $_POST['date_to'] ?? '' ?>"></label>
-        <button type="submit" class="btn btn-primary">Применить фильтры</button>
+            
+        <label style="flex:1;">
+            Дата с<br>
+            <input type="date" name="date_from" value="<?= $_POST['date_from'] ?? '' ?>" 
+                   style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
+        </label>
+            
+        <label style="flex:1;">
+            Дата по<br>
+            <input type="date" name="date_to" value="<?= $_POST['date_to'] ?? '' ?>" 
+                   style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
+        </label>
+            
+        <button type="submit" class="btn btn-primary" style="padding:12px 32px;">
+            Применить фильтры
+        </button>
     </form>
 
-    <!-- МАССОВАЯ ОТМЕНА (только для залогиненных) -->
+    <!-- МАССОВАЯ ОТМЕНА (только для залогиненных) - новый стиль -->
     <?php if ($isLoggedIn): ?>
-    <div style="margin: 30px 0; padding: 20px; background: #333; border-radius: 12px; border: 2px solid #ff9800;">
-        <h3>🗑 Массовая отмена</h3>
-        <form method="POST" style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
-            <label>Дата:
-                <input type="date" name="cancel_date" value="<?= date('Y-m-d') ?>" required>
+    <div style="background: #1f1f1f; padding: 25px; border-radius: 12px; margin-bottom: 30px;">
+        <h3 style="margin-top:0; margin-bottom:20px;">🗑 Массовая отмена</h3>
+        <form method="POST" style="display:flex; gap:15px; align-items:end; flex-wrap:wrap;">
+
+            <label style="flex:1;">
+                Дата<br>
+                <input type="date" name="cancel_date" value="<?= date('Y-m-d') ?>" required
+                       style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
             </label>
-            <label>Тип машины:
-                <select name="type_machine" required>
+
+            <label style="flex:1;">
+                Тип машины<br>
+                <select name="type_machine" required
+                        style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
                     <option value="Стиральная">Стиральная</option>
                     <option value="Сушильная">Сушильная</option>
                 </select>
             </label>
+
             <button type="submit" name="mass_cancel" class="btn btn-warning" 
-                    onclick="return confirm('Отменить ВСЕ записи на выбранную дату и тип машины?')">
+                    onclick="return confirm('Отменить ВСЕ записи на выбранную дату и тип машины?')"
+                    style="padding:12px 32px; font-size:16px;">
                 Отменить все
             </button>
         </form>
@@ -167,34 +189,45 @@ $bookings = $stmt->fetchAll();
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
             <thead style="position: sticky; top: 0; z-index: 10; background: #1f1f1f;">
                 <tr>
-                    <th style="padding: 14px 12px; text-align: left;">ID</th>
-                    <th style="padding: 14px 12px; text-align: left;">Житель</th>
-                    <th style="padding: 14px 12px; text-align: left;">Комната</th>
-                    <th style="padding: 14px 12px; text-align: left;">Машина</th>
-                    <th style="padding: 14px 12px; text-align: left;">Начало</th>
-                    <th style="padding: 14px 12px; text-align: left;">Конец</th>
-                    <th style="padding: 14px 12px; text-align: left;">Статус</th>
+                    <th style="padding:14px 12px; text-align:left;">ID</th>
+                    <th style="padding:14px 12px; text-align:left;">Житель</th>
+                    <th style="padding:14px 12px; text-align:left;">Комната</th>
+                    <th style="padding:14px 12px; text-align:left;">Машина</th>
+                    <th style="padding:14px 12px; text-align:left;">Начало</th>
+                    <th style="padding:14px 12px; text-align:left;">Конец</th>
+                    <th style="padding:14px 12px; text-align:center;">Статус</th>
                     <?php if ($isAdmin): ?>
-                        <th style="padding: 14px 12px; text-align: center; width: 110px;">Действие</th>
+                        <th style="padding:14px 12px; text-align:center; width:130px;">Действие</th>
                     <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($bookings as $b): ?>
+                <?php foreach ($bookings as $b): 
+                    $status = $b['status'];
+                    $statusColor = match($status) {
+                        'Ожидание' => '#ff9800',
+                        'Подверженная', 'Подтверждено' => '#4caf50',
+                        'cancelled', 'Отменено' => '#f44336',
+                        default => '#666'
+                    };
+                ?>
                 <tr>
-                    <td style="padding: 12px;"><?= $b['id'] ?></td>
-                    <td style="padding: 12px;"><?= htmlspecialchars($b['last_name'] . ' ' . $b['first_name']) ?></td>
-                    <td style="padding: 12px;"><?= $b['inidroom'] ?></td>
-                    <td style="padding: 12px;"><?= htmlspecialchars($b['type_machine']) ?> #<?= $b['number_machine'] ?></td>
-                    <td style="padding: 12px;"><?= $b['start_time'] ?></td>
-                    <td style="padding: 12px;"><?= $b['end_time'] ?></td>
-                    <td style="padding: 12px;"><?= htmlspecialchars($b['status']) ?></td>
+                    <td style="padding:12px;"><?= $b['id'] ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($b['last_name'] . ' ' . $b['first_name']) ?></td>
+                    <td style="padding:12px;"><?= $b['inidroom'] ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($b['type_machine']) ?> #<?= $b['number_machine'] ?></td>
+                    <td style="padding:12px;"><?= $b['start_time'] ?></td>
+                    <td style="padding:12px;"><?= $b['end_time'] ?></td>
+                    <td style="padding:12px; text-align:center;">
+                        <span style="padding:4px 14px; border-radius:9999px; font-size:14px; background:<?= $statusColor ?>; color:#fff;">
+                            <?= htmlspecialchars($status) ?>
+                        </span>
+                    </td>
                     <?php if ($isAdmin): ?>
-                    <td style="padding: 12px; text-align: center;">
+                    <td style="padding:12px; text-align:center;">
                         <form method="POST" style="display:inline;">
                             <input type="hidden" name="cancel_id" value="<?= $b['id'] ?>">
-                            <button type="submit" class="btn btn-danger" 
-                                    onclick="return confirm('Отменить эту запись?')">Отменить</button>
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Отменить эту запись?')">Отменить</button>
                         </form>
                     </td>
                     <?php endif; ?>
@@ -203,12 +236,5 @@ $bookings = $stmt->fetchAll();
             </tbody>
         </table>
     </div>
-
-    <?php if (empty($bookings)): ?>
-        <p style="text-align:center; padding:60px; font-size:18px; color:#90a4ae;">
-            Сегодня записей нет ✅
-        </p>
-    <?php endif; ?>
-</div>
 
 <?php require_once __DIR__ . '/templates/footer.php'; ?>

@@ -29,6 +29,7 @@ switch ($uri) {
         break;
 
     case '/stats':
+    case '/residents':
     case '/machines':
     case '/notifications':
         if (!isset($_SESSION['admin_id'])) {
