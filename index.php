@@ -19,15 +19,11 @@ switch ($uri) {
         require_once __DIR__ . '/booking.php';
         break;
 
-    case '/auth':
-        require_once __DIR__ . '/auth.php';
-        break;
-
     case '/login':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/login.php';
         } else {
-            header('Location: /auth');
+            header('Location: /login.php');
             exit;
         }
         break;

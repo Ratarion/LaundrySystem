@@ -1,0 +1,34 @@
+.menu-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 24px;
+            color: #fff;
+            text-decoration: none !important;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            border-radius: 0 30px 30px 0;
+            margin-bottom: 4px;
+        }
+.menu-link:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    transform: translateX(4px);
+}
+.menu-link.active {
+    background: rgba(255,255,255,0.15);
+    font-weight: 600;
+    border-left: 4px solid #4caf50;
+}
+/* Выход — красный, без кривого подчёркивания */
+.menu-link.logout {
+    color: #ff5252;
+}
+.menu-link.logout:hover {
+    background: rgba(255,82,82,0.15);
+    color: #ff5252;
+}
+/* Убираем любое стандартное подчёркивание браузера */
+.menu-link span {
+    text-decoration: none !important;
+}

@@ -3,7 +3,7 @@
 session_start();
 require_once __DIR__ . '/logger.php';
 
-// === ЗАЩИТА ОТ ОШИБКИ PDO ===
+// === ЗАЩИТА ОШИБКИ PDO ===
 $pdo = require_once __DIR__ . '/db_connect.php';
 if (!($pdo instanceof PDO)) {
     $log->critical('db_connect.php не вернул PDO объект!');
@@ -12,8 +12,8 @@ if (!($pdo instanceof PDO)) {
 
 $log->info('Открыта главная страница (booking)', ['ip' => $_SERVER['REMOTE_ADDR']]);
 
-$isAdmin = isset($_SESSION['admin_id']) && $_SESSION['role'] === 1;
-$isLoggedIn = isset($_SESSION['admin_id']);
+$isAdmin     = isset($_SESSION['admin_id']) && $_SESSION['role'] === 1;
+$isLoggedIn  = isset($_SESSION['admin_id']);
 
 // ==================== ДЕФОЛТНЫЙ ФИЛЬТР НА СЕГОДНЯ ====================
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Отмена одной записи (только админ)
+    // Отмена одной записи
     if ($isAdmin && isset($_POST['cancel_id'])) {
         $id = (int)$_POST['cancel_id'];
         $stmt = $pdo->prepare("UPDATE booking SET status = 'cancelled' WHERE id = ?");
@@ -60,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $where = ["DATE(b.start_time) BETWEEN ? AND ?"];
 $params = [$_POST['date_from'] ?? date('Y-m-d'), $_POST['date_to'] ?? date('Y-m-d')];
 
-// (остальные фильтры как раньше)
 if (!empty($_POST['status'])) {
     $where[] = "b.status = ?";
     $params[] = $_POST['status'];
@@ -83,18 +82,22 @@ $bookings = $stmt->fetchAll();
 ?>
 
 <?php require_once __DIR__ . '/templates/header.php'; ?>
-<?php require_once __DIR__ . '/templates/navbar.php'; ?>
+
+<!-- ←←← ВОТ ИСПРАВЛЕНИЕ: navbar только для админов →→→ -->
+<?php if ($isLoggedIn): ?>
+    <?php require_once __DIR__ . '/templates/navbar.php'; ?>
+<?php endif; ?>
 
 <div style="flex: 1; padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>📅 Бронирования на сегодня (<?= date('d.m.Y') ?>)</h1>
         
         <?php if (!$isLoggedIn): ?>
-            <a href="/auth" class="btn btn-primary" style="font-size: 18px; padding: 12px 30px;">
+            <a href="/login.php" class="btn btn-primary" style="font-size: 18px; padding: 12px 30px;">
                 🔑 Вход в админ-панель
             </a>
         <?php else: ?>
-            <span style="color: #4caf50;">👤 <?= $_SESSION['username'] ?> (админ)</span>
+            <span style="color: #4caf50;">👤 <?= htmlspecialchars($_SESSION['username'] ?? 'Админ') ?> (админ)</span>
         <?php endif; ?>
     </div>
 
@@ -109,8 +112,8 @@ $bookings = $stmt->fetchAll();
                 <option value="cancelled">Отменено</option>
             </select>
         </label>
-        <label>Дата с: <input type="date" name="date_from"></label>
-        <label>Дата по: <input type="date" name="date_to"></label>
+        <label>Дата с: <input type="date" name="date_from" value="<?= $_POST['date_from'] ?? '' ?>"></label>
+        <label>Дата по: <input type="date" name="date_to" value="<?= $_POST['date_to'] ?? '' ?>"></label>
         <button type="submit" class="btn btn-primary">Применить фильтры</button>
     </form>
 
