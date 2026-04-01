@@ -89,11 +89,11 @@
             min-width: 320px;
             animation: toastIn 0.3s ease;
         }
-        
+
         .toast-content {
             font-weight: 600;
         }
-        
+
         .toast-close {
             background: none;
             border: none;
@@ -103,15 +103,54 @@
             opacity: 0.8;
             line-height: 1;
         }
-        
+
         .toast-close:hover {
             opacity: 1;
         }
-        
+
         /* Анимация появления */
         @keyframes toastIn {
             from { transform: translateY(-30px); opacity: 0; }
             to   { transform: translateY(0); opacity: 1; }
+        }
+
+
+        /* Красивый тоггл-переключатель */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 62px;
+            height: 32px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #f44336;
+            transition: .3s;
+            border-radius: 9999px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background: #4caf50;
+        }
+        input:checked + .slider:before {
+            transform: translateX(30px);
         }
     </style>
 </head>

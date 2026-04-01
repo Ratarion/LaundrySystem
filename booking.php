@@ -104,7 +104,7 @@ $bookings = $stmt->fetchAll();
         <div class="toast-content">
             ✅ <?= htmlspecialchars($_GET['success']) ?>
         </div>
-        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
     </div>
 <?php endif; ?>
 
