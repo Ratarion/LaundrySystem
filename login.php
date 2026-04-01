@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt = $pdo->prepare("
-        SELECT id, username, password_hash 
+        SELECT id, username, password_hash, role 
         FROM administrators 
         WHERE username = ?
     ");
@@ -42,11 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $_SESSION['admin_id']  = $user['id'];
         $_SESSION['username']  = $user['username'];
-        $_SESSION['role']      = 1;
+        $_SESSION['role']      = (int)$user['role'];;
+        
 
         $log->info('✅ Успешный вход', [
             'admin_id'  => $user['id'],
             'username'  => $user['username'],
+            'role'     => $user['role'],
             'ip'        => $_SERVER['REMOTE_ADDR']
         ]);
 
