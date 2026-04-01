@@ -11,11 +11,11 @@ if (isset($_SESSION['admin_id'])) {
 }
 
 // Подключаем базу
-$pdo = require_once __DIR__ . '/db_connect.php';
-if (!($pdo instanceof PDO)) {
-    $log->critical('db_connect.php не вернул PDO объект!');
+require_once __DIR__ . '/db_connect.php';
+if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
     die('Критическая ошибка подключения к базе.');
 }
+$pdo = $GLOBALS['pdo'];
 
 // ==================== ОБРАБОТКА POST ====================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <p style="text-align: center; margin-top: 25px; color: #666; font-size: 14px;">
-            Только для администраторов
+            Только администраторам и техническому персоналу
         </p>
     </div>
 </div>

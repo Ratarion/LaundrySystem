@@ -1,62 +1,74 @@
 <?php
-// booking.php — главная страница бронирований (GET/POST /booking)
+// booking.php — главная страница (3 роли)
 session_start();
 require_once __DIR__ . '/logger.php';
 
-// === ЗАЩИТА ОШИБКИ PDO ===
-$pdo = require_once __DIR__ . '/db_connect.php';
-if (!($pdo instanceof PDO)) {
-    $log->critical('db_connect.php не вернул PDO объект!');
-    die('Критическая ошибка подключения к базе. Обратитесь к разработчику.');
+require_once __DIR__ . '/db_connect.php';
+
+if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
+    $log->critical('PDO объект не найден в $GLOBALS после подключения');
+    die('Критическая ошибка подключения к базе. Смотри logs/error.log');
 }
 
-$log->info('Открыта главная страница (booking)', ['ip' => $_SERVER['REMOTE_ADDR']]);
+$pdo = $GLOBALS['pdo'];
 
-$isAdmin     = isset($_SESSION['admin_id']) && $_SESSION['role'] === 1;
-$isLoggedIn  = isset($_SESSION['admin_id']);
+$log->info('Открыта главная страница', ['ip' => $_SERVER['REMOTE_ADDR']]);
 
-// ==================== ДЕФОЛТНЫЙ ФИЛЬТР НА СЕГОДНЯ ====================
+// ====================== ОПРЕДЕЛЕНИЕ РОЛИ ======================
+$role = $_SESSION['role'] ?? 0;
+$isLoggedIn   = isset($_SESSION['admin_id']);
+$isAdmin      = $role === 1;
+$isTechnician = $role === 2;
+
+$roleName = $role === 1 ? 'Администратор' : ($role === 2 ? 'Техник' : 'Житель');
+
+// ====================== ДЕФОЛТНЫЙ ФИЛЬТР ======================
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $_POST['date_from'] = date('Y-m-d');
     $_POST['date_to']   = date('Y-m-d');
 }
 
-// ==================== ОБРАБОТКА ДЕЙСТВИЙ (POST) ====================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// ====================== ОБРАБОТКА ДЕЙСТВИЙ ======================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 
-    // Массовая отмена (только админ)
-    if ($isAdmin && isset($_POST['mass_cancel'])) {
+    // Массовая отмена (техник + админ)
+    if (isset($_POST['mass_cancel'])) {
         $date = $_POST['cancel_date'];
         $type = $_POST['type_machine'];
-
+    
+        // Исправленный запрос под PostgreSQL
         $stmt = $pdo->prepare("
-            UPDATE booking b
-            SET status = 'cancelled'
-            FROM machines m
-            WHERE b.inidmachine = m.id
-                AND DATE(b.start_time) = ?
-                AND m.type_machine = ?
+            UPDATE booking
+            SET status = 'Отменено'
+            FROM machines
+            WHERE booking.inidmachine = machines.id
+              AND booking.start_time::date = ?
+              AND machines.type_machine = ?
         ");
-        $stmt->execute([$date, $type]);
-
-        $affected = $stmt->rowCount();
-        $log->info('Массовая отмена выполнена', ['date' => $date, 'type' => $type, 'affected' => $affected]);
-        header('Location: /booking?success=Массовая отмена выполнена!');
-        exit;
+        
+        if ($stmt) {
+            $stmt->execute([$date, $type]);
+            $log->info('Массовая отмена', ['date' => $date, 'type' => $type, 'role' => $roleName]);
+            header('Location: /booking?success=Массовая отмена выполнена!');
+            exit;
+        } else {
+            $log->error('Ошибка подготовки запроса массовой отмены');
+            die('Ошибка в SQL запросе. Проверьте логи.');
+        }
     }
 
-    // Отмена одной записи
+    // Отмена одной записи — только админ
     if ($isAdmin && isset($_POST['cancel_id'])) {
         $id = (int)$_POST['cancel_id'];
-        $stmt = $pdo->prepare("UPDATE booking SET status = 'cancelled' WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE booking SET status = 'Отменено' WHERE id = ?");
         $stmt->execute([$id]);
-        $log->info('Отменена запись', ['booking_id' => $id]);
+        $log->info('Отменена запись', ['booking_id' => $id, 'role' => $roleName]);
         header('Location: /booking?success=Запись отменена');
         exit;
     }
 }
 
-// ==================== ЗАПРОС С ФИЛЬТРАМИ ====================
+// ====================== ЗАПРОС ЗАПИСЕЙ ======================
 $where = ["DATE(b.start_time) BETWEEN ? AND ?"];
 $params = [$_POST['date_from'] ?? date('Y-m-d'), $_POST['date_to'] ?? date('Y-m-d')];
 
@@ -83,21 +95,32 @@ $bookings = $stmt->fetchAll();
 
 <?php require_once __DIR__ . '/templates/header.php'; ?>
 
-<!-- ←←← ВОТ ИСПРАВЛЕНИЕ: navbar только для админов →→→ -->
 <?php if ($isLoggedIn): ?>
     <?php require_once __DIR__ . '/templates/navbar.php'; ?>
 <?php endif; ?>
 
+<?php if (isset($_GET['success'])): ?>
+    <div id="success-toast" class="toast-notification">
+        <div class="toast-content">
+            ✅ <?= htmlspecialchars($_GET['success']) ?>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.parentElement.remove()">✕</button>
+    </div>
+<?php endif; ?>
+
 <div style="flex: 1; padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h1>📅 Бронирования на сегодня (<?= date('d.m.Y') ?>)</h1>
+        <h1>📅 Бронирования (<?= $roleName ?>)</h1>
         
         <?php if (!$isLoggedIn): ?>
-            <a href="/login.php" class="btn btn-primary" style="font-size: 18px; padding: 12px 30px;">
+            <a href="/login" class="btn btn-primary" style="font-size: 18px; padding: 12px 30px;">
                 🔑 Вход в админ-панель
             </a>
         <?php else: ?>
-            <span style="color: #4caf50;">👤 <?= htmlspecialchars($_SESSION['username'] ?? 'Админ') ?> (админ)</span>
+            <span style="color: #4caf50; font-weight: 600;">
+                👤 <?= htmlspecialchars($_SESSION['username']) ?> 
+                <small>(<?= $roleName ?>)</small>
+            </span>
         <?php endif; ?>
     </div>
 
@@ -117,45 +140,74 @@ $bookings = $stmt->fetchAll();
         <button type="submit" class="btn btn-primary">Применить фильтры</button>
     </form>
 
+    <!-- МАССОВАЯ ОТМЕНА (только для залогиненных) -->
+    <?php if ($isLoggedIn): ?>
+    <div style="margin: 30px 0; padding: 20px; background: #333; border-radius: 12px; border: 2px solid #ff9800;">
+        <h3>🗑 Массовая отмена</h3>
+        <form method="POST" style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+            <label>Дата:
+                <input type="date" name="cancel_date" value="<?= date('Y-m-d') ?>" required>
+            </label>
+            <label>Тип машины:
+                <select name="type_machine" required>
+                    <option value="Стиральная">Стиральная</option>
+                    <option value="Сушильная">Сушильная</option>
+                </select>
+            </label>
+            <button type="submit" name="mass_cancel" class="btn btn-warning" 
+                    onclick="return confirm('Отменить ВСЕ записи на выбранную дату и тип машины?')">
+                Отменить все
+            </button>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <!-- ТАБЛИЦА -->
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Житель</th>
-                <th>Комната</th>
-                <th>Машина</th>
-                <th>Начало</th>
-                <th>Конец</th>
-                <th>Статус</th>
-                <?php if ($isAdmin): ?><th>Действие</th><?php endif; ?>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($bookings as $b): ?>
-            <tr>
-                <td><?= $b['id'] ?></td>
-                <td><?= htmlspecialchars($b['last_name'] . ' ' . $b['first_name']) ?></td>
-                <td><?= $b['inidroom'] ?></td>
-                <td><?= htmlspecialchars($b['type_machine']) ?> #<?= $b['number_machine'] ?></td>
-                <td><?= $b['start_time'] ?></td>
-                <td><?= $b['end_time'] ?></td>
-                <td><?= htmlspecialchars($b['status']) ?></td>
-                <?php if ($isAdmin): ?>
-                <td>
-                    <form method="POST" style="display:inline;">
-                        <input type="hidden" name="cancel_id" value="<?= $b['id'] ?>">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('Отменить эту запись?')">Отменить</button>
-                    </form>
-                </td>
-                <?php endif; ?>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+    <div style="max-height: 60vh; overflow-y: auto; border: 2px solid #333; border-radius: 12px; background: #1a1a1a;">
+        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            <thead style="position: sticky; top: 0; z-index: 10; background: #1f1f1f;">
+                <tr>
+                    <th style="padding: 14px 12px; text-align: left;">ID</th>
+                    <th style="padding: 14px 12px; text-align: left;">Житель</th>
+                    <th style="padding: 14px 12px; text-align: left;">Комната</th>
+                    <th style="padding: 14px 12px; text-align: left;">Машина</th>
+                    <th style="padding: 14px 12px; text-align: left;">Начало</th>
+                    <th style="padding: 14px 12px; text-align: left;">Конец</th>
+                    <th style="padding: 14px 12px; text-align: left;">Статус</th>
+                    <?php if ($isAdmin): ?>
+                        <th style="padding: 14px 12px; text-align: center; width: 110px;">Действие</th>
+                    <?php endif; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($bookings as $b): ?>
+                <tr>
+                    <td style="padding: 12px;"><?= $b['id'] ?></td>
+                    <td style="padding: 12px;"><?= htmlspecialchars($b['last_name'] . ' ' . $b['first_name']) ?></td>
+                    <td style="padding: 12px;"><?= $b['inidroom'] ?></td>
+                    <td style="padding: 12px;"><?= htmlspecialchars($b['type_machine']) ?> #<?= $b['number_machine'] ?></td>
+                    <td style="padding: 12px;"><?= $b['start_time'] ?></td>
+                    <td style="padding: 12px;"><?= $b['end_time'] ?></td>
+                    <td style="padding: 12px;"><?= htmlspecialchars($b['status']) ?></td>
+                    <?php if ($isAdmin): ?>
+                    <td style="padding: 12px; text-align: center;">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="cancel_id" value="<?= $b['id'] ?>">
+                            <button type="submit" class="btn btn-danger" 
+                                    onclick="return confirm('Отменить эту запись?')">Отменить</button>
+                        </form>
+                    </td>
+                    <?php endif; ?>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 
     <?php if (empty($bookings)): ?>
-        <p style="text-align:center; padding:40px;">Сегодня записей нет ✅</p>
+        <p style="text-align:center; padding:60px; font-size:18px; color:#90a4ae;">
+            Сегодня записей нет ✅
+        </p>
     <?php endif; ?>
 </div>
 

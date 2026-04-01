@@ -17,6 +17,102 @@
         .btn-danger { background: #d32f2f; color: white; }
         .btn-primary { background: #1976d2; color: white; }
         .filter-form { background: #1f1f1f; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        div[style*="max-height: 60vh"] {
+            scrollbar-width: thin;
+            scrollbar-color: #00bcd4 #1f1f1f;
+        }
+        div[style*="max-height: 60vh"]::-webkit-scrollbar {
+            height: 8px;
+        }
+        div[style*="max-height: 60vh"]::-webkit-scrollbar-thumb {
+            background: #00bcd4;
+            border-radius: 4px;
+        }
+
+        /* === СТИЛИ ДЛЯ МЕНЮ === */
+        .menu-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 24px;
+            color: #fff;
+            text-decoration: none !important;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            border-radius: 0 30px 30px 0;
+            margin-bottom: 4px;
+        }
+        .menu-link:hover {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            transform: translateX(4px);
+        }
+        .menu-link.active {
+            background: rgba(255,255,255,0.15);
+            font-weight: 600;
+            border-left: 4px solid #4caf50;
+        }
+        .menu-link.logout {
+            color: #ff5252;
+        }
+        .menu-link.logout:hover {
+            background: rgba(255,82,82,0.15);
+            color: #ff5252;
+        }
+        
+        /* === КНОПКА МАССОВОЙ ОТМЕНЫ === */
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 8px;
+        }
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+
+        /* ====================== ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ ====================== */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: #fff;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 9999;
+            min-width: 320px;
+            animation: toastIn 0.3s ease;
+        }
+        
+        .toast-content {
+            font-weight: 600;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            opacity: 0.8;
+            line-height: 1;
+        }
+        
+        .toast-close:hover {
+            opacity: 1;
+        }
+        
+        /* Анимация появления */
+        @keyframes toastIn {
+            from { transform: translateY(-30px); opacity: 0; }
+            to   { transform: translateY(0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
