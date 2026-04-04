@@ -31,7 +31,7 @@ try {
     $pdo = new PDO($dsn, $user, $password, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Ошибки будут вызывать исключения
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // Данные возвращаются в виде массивов
-        PDO::ATTR_EMULATE_PREPARES   => false,                  // Реальная защита от SQL-инъекций
+        PDO::ATTR_EMULATE_PREPARES   => false,                  // Защита от SQL-инъекций
         PDO::ATTR_PERSISTENT         => false,
     ]);
 
