@@ -1,12 +1,16 @@
 <?php
 // stats.php — Статистика (ТОЛЬКО для Администратора)
 session_start();
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
 
-require_once __DIR__ . '/db_connect.php';
+require_once $root . '/config/db_connect.php';
 if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
     die('Критическая ошибка подключения к базе.');
 }
+
+use Models\Booking;
+
 $pdo = $GLOBALS['pdo'];
 
 if (($_SESSION['role'] ?? 0) !== 1) {
@@ -19,58 +23,51 @@ $log->info('Открыта страница Статистика (Админ)', 
 $from = $_POST['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
 $to   = $_POST['date_to']   ?? date('Y-m-d');
 
+// Получаем все бронирования за период через модель
+$bookingsData = Booking::getAll($pdo, $from, $to);
+
 // ==================== РЕАЛЬНАЯ СТАТИСТИКА ====================
 
-// 1. Общие цифры
-$total = $pdo->prepare("SELECT COUNT(*) FROM booking WHERE DATE(start_time) BETWEEN ? AND ?");
-$total->execute([$from, $to]);
-$totalBookings = $total->fetchColumn();
+$totalBookings = count($bookingsData);
 
-$cancelled = $pdo->prepare("SELECT COUNT(*) FROM booking WHERE DATE(start_time) BETWEEN ? AND ? AND status = 'cancelled'");
-$cancelled->execute([$from, $to]);
-$cancelledCount = $cancelled->fetchColumn();
+$cancelledCount = 0;
+$activeCount    = 0;
+$byType         = [];
+$dailyData      = [];
+$topMachines    = [];
 
-$active = $pdo->prepare("SELECT COUNT(*) FROM booking WHERE DATE(start_time) BETWEEN ? AND ? AND status != 'cancelled'");
-$active->execute([$from, $to]);
-$activeCount = $active->fetchColumn();
+foreach ($bookingsData as $b) {
+    $status = $b['status'];
+    if (in_array($status, ['cancelled', 'Отменено'])) {
+        $cancelledCount++;
+    } else {
+        $activeCount++;
+    }
 
-// 2. По типу машин
-$byTypeStmt = $pdo->prepare("
-    SELECT m.type_machine, COUNT(*) as cnt 
-    FROM booking b 
-    JOIN machines m ON b.inidmachine = m.id 
-    WHERE DATE(b.start_time) BETWEEN ? AND ?
-    GROUP BY m.type_machine
-");
-$byTypeStmt->execute([$from, $to]);
-$byType = $byTypeStmt->fetchAll(PDO::FETCH_ASSOC);
+    // По типу машин
+    $type = $b['type_machine'];
+    $byType[$type] = ($byType[$type] ?? 0) + 1;
 
-// 3. График по дням
-$dailyStmt = $pdo->prepare("
-    SELECT DATE(start_time) as day, COUNT(*) as cnt 
-    FROM booking 
-    WHERE DATE(start_time) BETWEEN ? AND ?
-    GROUP BY day 
-    ORDER BY day
-");
-$dailyStmt->execute([$from, $to]);
-$dailyData = $dailyStmt->fetchAll(PDO::FETCH_ASSOC);
+    // По дням
+    $day = substr($b['start_time'], 0, 10); // YYYY-MM-DD
+    $dailyData[$day] = ($dailyData[$day] ?? 0) + 1;
 
-// 4. Топ-5 машин
-$topStmt = $pdo->prepare("
-    SELECT m.type_machine, m.number_machine, COUNT(*) as cnt 
-    FROM booking b 
-    JOIN machines m ON b.inidmachine = m.id 
-    WHERE DATE(b.start_time) BETWEEN ? AND ?
-    GROUP BY m.id, m.type_machine, m.number_machine 
-    ORDER BY cnt DESC LIMIT 5
-");
-$topStmt->execute([$from, $to]);
-$topMachines = $topStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Топ-5 машин
+    $machineKey = $b['type_machine'] . ' #' . $b['number_machine'];
+    $topMachines[$machineKey] = ($topMachines[$machineKey] ?? 0) + 1;
+}
+
+// Сортируем топ-5
+arsort($topMachines);
+$topMachines = array_slice($topMachines, 0, 5, true);
+
+// Преобразуем для графика
+$dailyLabels = array_keys($dailyData);
+$dailyCounts = array_values($dailyData);
 ?>
 
-<?php require_once __DIR__ . '/templates/header.php'; ?>
-<?php require_once __DIR__ . '/templates/navbar.php'; ?>
+<?php require_once $root . '/templates/header.php'; ?>
+<?php require_once $root . '/templates/navbar.php'; ?>
 
 <div style="flex: 1; padding: 20px;">
 
@@ -81,8 +78,8 @@ $topMachines = $topStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Фильтр -->
     <form method="POST" style="background:#1f1f1f;padding:20px;border-radius:12px;margin-bottom:30px;display:flex;gap:15px;align-items:end;flex-wrap:wrap;">
-        <label>Дата с: <input type="date" name="date_from" value="<?= $from ?>"></label>
-        <label>Дата по: <input type="date" name="date_to" value="<?= $to ?>"></label>
+        <label>Дата с: <input type="date" name="date_from" value="<?= htmlspecialchars($from) ?>"></label>
+        <label>Дата по: <input type="date" name="date_to" value="<?= htmlspecialchars($to) ?>"></label>
         <button type="submit" class="btn btn-primary">Показать</button>
     </form>
 
@@ -115,10 +112,10 @@ $topMachines = $topStmt->fetchAll(PDO::FETCH_ASSOC);
         <table style="width:100%;margin-top:15px;">
             <thead><tr><th>Машина</th><th>Бронирований</th></tr></thead>
             <tbody>
-                <?php foreach ($topMachines as $m): ?>
+                <?php foreach ($topMachines as $machine => $cnt): ?>
                 <tr>
-                    <td><?= htmlspecialchars($m['type_machine']) ?> #<?= htmlspecialchars($m['number_machine']) ?></td>
-                    <td style="font-weight:600;"><?= $m['cnt'] ?></td>
+                    <td><?= htmlspecialchars($machine) ?></td>
+                    <td style="font-weight:600;"><?= $cnt ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -126,17 +123,17 @@ $topMachines = $topStmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+<?php require_once $root . '/templates/footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     new Chart(document.getElementById('dailyChart'), {
         type: 'bar',
         data: {
-            labels: <?= json_encode(array_column($dailyData, 'day')) ?>,
+            labels: <?= json_encode($dailyLabels) ?>,
             datasets: [{
                 label: 'Бронирований',
-                data: <?= json_encode(array_column($dailyData, 'cnt')) ?>,
+                data: <?= json_encode($dailyCounts) ?>,
                 backgroundColor: '#00bcd4'
             }]
         },

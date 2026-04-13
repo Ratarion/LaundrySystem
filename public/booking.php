@@ -1,14 +1,16 @@
 <?php
 // booking.php — главная страница (3 роли)
 session_start();
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
 
-require_once __DIR__ . '/db_connect.php';
-
+require_once $root . '/config/db_connect.php';
 if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
     $log->critical('PDO объект не найден в $GLOBALS после подключения');
     die('Критическая ошибка подключения к базе. Смотри logs/error.log');
 }
+
+use Models\Booking;
 
 $pdo = $GLOBALS['pdo'];
 
@@ -35,78 +37,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
     if (isset($_POST['mass_cancel'])) {
         $date = $_POST['cancel_date'];
         $type = $_POST['type_machine'];
-    
-        // Исправленный запрос под PostgreSQL
-        $stmt = $pdo->prepare("
-            UPDATE booking
-            SET status = 'Отменено'
-            FROM machines
-            WHERE booking.inidmachine = machines.id
-              AND booking.start_time::date = ?
-              AND machines.type_machine = ?
-        ");
-        
-        if ($stmt) {
-            $stmt->execute([$date, $type]);
+
+        $result = Booking::massCancel($pdo, $date, $type);
+
+        if ($result) {
             $log->info('Массовая отмена', ['date' => $date, 'type' => $type, 'role' => $roleName]);
             header('Location: /booking?success=Массовая отмена выполнена!');
             exit;
         } else {
-            $log->error('Ошибка подготовки запроса массовой отмены');
-            die('Ошибка в SQL запросе. Проверьте логи.');
+            $log->error('Ошибка массовой отмены');
+            die('Ошибка при массовой отмене. Смотри логи.');
         }
     }
 
     // Отмена одной записи — только админ
     if ($isAdmin && isset($_POST['cancel_id'])) {
         $id = (int)$_POST['cancel_id'];
-        $stmt = $pdo->prepare("UPDATE booking SET status = 'Отменено' WHERE id = ?");
-        $stmt->execute([$id]);
-        $log->info('Отменена запись', ['booking_id' => $id, 'role' => $roleName]);
-        header('Location: /booking?success=Запись отменена');
-        exit;
+        $result = Booking::cancelOne($pdo, $id);
+
+        if ($result) {
+            $log->info('Отменена запись', ['booking_id' => $id, 'role' => $roleName]);
+            header('Location: /booking?success=Запись отменена');
+            exit;
+        } else {
+            $log->error('Ошибка отмены записи');
+        }
     }
 }
 
 // ====================== ЗАПРОС ЗАПИСЕЙ ======================
-$where = ["DATE(b.start_time) BETWEEN ? AND ?"];
-$params = [$_POST['date_from'] ?? date('Y-m-d'), $_POST['date_to'] ?? date('Y-m-d')];
+$date_from = $_POST['date_from'] ?? date('Y-m-d');
+$date_to   = $_POST['date_to']   ?? date('Y-m-d');
+$status    = $_POST['status'] ?? '';
 
-if (!empty($_POST['status'])) {
-    $where[] = "b.status = ?";
-    $params[] = $_POST['status'];
-}
-
-$sql = "
-    SELECT b.id, b.start_time, b.end_time, b.status,
-           r.last_name, r.first_name, r.inidroom,
-           m.type_machine, m.number_machine
-    FROM booking b
-    JOIN residents r ON b.inidresidents = r.id
-    JOIN machines m ON b.inidmachine = m.id
-    WHERE " . implode(" AND ", $where) . "
-    ORDER BY b.start_time DESC
-";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$bookings = $stmt->fetchAll();
+$bookings = Booking::getAll($pdo, $date_from, $date_to, $status);
 ?>
+<!--=== ВСЁ, что было после логики бронирований === -->
+<?php 
+$root = dirname(__DIR__); 
 
-<?php require_once __DIR__ . '/templates/header.php'; ?>
+require_once $root . '/templates/header.php'; 
 
-<?php if ($isLoggedIn): ?>
-    <?php require_once __DIR__ . '/templates/navbar.php'; ?>
-<?php endif; ?>
-
-<?php if (isset($_GET['success'])): ?>
-    <div id="success-toast" class="toast-notification">
-        <div class="toast-content">
-            ✅ <?= htmlspecialchars($_GET['success']) ?>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
-    </div>
-<?php endif; ?>
+if ($isLoggedIn) {
+    require_once $root . '/templates/navbar.php';
+}
+?>
 
 <div style="flex: 1; padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -130,22 +105,22 @@ $bookings = $stmt->fetchAll();
             Статус<br>
             <select name="status" style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
                 <option value="">Все</option>
-                <option value="Ожидание">Ожидание</option>
-                <option value="Подверженная">Подтверждено</option>
-                <option value="Отмена">Отмена</option>
-                <option value="cancelled">Отменено</option>
+                <option value="Ожидание" <?= $status==='Ожидание'?'selected':'' ?>>Ожидание</option>
+                <option value="Подверженная" <?= $status==='Подверженная'?'selected':'' ?>>Подтверждено</option>
+                <option value="Отмена" <?= $status==='Отмена'?'selected':'' ?>>Отмена</option>
+                <option value="cancelled" <?= $status==='cancelled'?'selected':'' ?>>Отменено</option>
             </select>
         </label>
             
         <label style="flex:1;">
             Дата с<br>
-            <input type="date" name="date_from" value="<?= $_POST['date_from'] ?? '' ?>" 
+            <input type="date" name="date_from" value="<?= htmlspecialchars($date_from) ?>" 
                    style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
         </label>
             
         <label style="flex:1;">
             Дата по<br>
-            <input type="date" name="date_to" value="<?= $_POST['date_to'] ?? '' ?>" 
+            <input type="date" name="date_to" value="<?= htmlspecialchars($date_to) ?>" 
                    style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
         </label>
             
@@ -154,12 +129,11 @@ $bookings = $stmt->fetchAll();
         </button>
     </form>
 
-    <!-- МАССОВАЯ ОТМЕНА (только для залогиненных) - новый стиль -->
+    <!-- МАССОВАЯ ОТМЕНА -->
     <?php if ($isLoggedIn): ?>
     <div style="background: #1f1f1f; padding: 25px; border-radius: 12px; margin-bottom: 30px;">
         <h3 style="margin-top:0; margin-bottom:20px;">🗑 Массовая отмена</h3>
         <form method="POST" style="display:flex; gap:15px; align-items:end; flex-wrap:wrap;">
-
             <label style="flex:1;">
                 Дата<br>
                 <input type="date" name="cancel_date" value="<?= date('Y-m-d') ?>" required
@@ -236,5 +210,6 @@ $bookings = $stmt->fetchAll();
             </tbody>
         </table>
     </div>
+</div>
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+<?php require_once $root . '/templates/footer.php'; ?>

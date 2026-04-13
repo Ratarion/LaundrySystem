@@ -2,20 +2,23 @@
 // login.php — ПОЛНАЯ СТРАНИЦА ВХОДА (GET — форма, POST — обработка)
 
 session_start();
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
+
+require_once $root . '/config/db_connect.php';
+if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
+    die('Критическая ошибка подключения к базе.');
+}
+
+use Models\Administrator;
+
+$pdo = $GLOBALS['pdo'];
 
 // Если уже авторизован — сразу на главную
 if (isset($_SESSION['admin_id'])) {
     header('Location: /booking.php');
     exit;
 }
-
-// Подключаем базу
-require_once __DIR__ . '/db_connect.php';
-if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    die('Критическая ошибка подключения к базе.');
-}
-$pdo = $GLOBALS['pdo'];
 
 // ==================== ОБРАБОТКА POST ====================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,26 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $stmt = $pdo->prepare("
-        SELECT id, username, password_hash, role 
-        FROM administrators 
-        WHERE username = ?
-    ");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    // Используем модель вместо сырого SQL
+    $user = Administrator::findByUsername($pdo, $username);
 
-    if ($user && password_verify($password, $user['password_hash'])) {
+    if ($user && password_verify($password, $user->password_hash)) {
 
-        $_SESSION['admin_id']  = $user['id'];
-        $_SESSION['username']  = $user['username'];
-        $_SESSION['role']      = (int)$user['role'];;
-        
+        $_SESSION['admin_id'] = $user->id;
+        $_SESSION['username'] = $user->username;
+        $_SESSION['role']     = $user->role;
 
         $log->info('✅ Успешный вход', [
-            'admin_id'  => $user['id'],
-            'username'  => $user['username'],
-            'role'     => $user['role'],
-            'ip'        => $_SERVER['REMOTE_ADDR']
+            'admin_id' => $user->id,
+            'username' => $user->username,
+            'role'     => $user->role,
+            'ip'       => $_SERVER['REMOTE_ADDR']
         ]);
 
         header('Location: /booking.php');
@@ -67,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<?php require_once __DIR__ . '/templates/header.php'; ?>
+<?php require_once $root . '/templates/header.php'; ?>
 
 <div style="flex: 1; 
             min-height: 100vh; 
@@ -89,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ← Вернуться назад
         </a>
 
-        <!-- Иконка ключа (как на вашем скриншоте) -->
+        <!-- Иконка ключа -->
         <div style="text-align: center; margin-bottom: 25px;">
             <span style="font-size: 52px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🔑</span>
         </div>
@@ -145,4 +142,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+<?php require_once $root . '/templates/footer.php'; ?>

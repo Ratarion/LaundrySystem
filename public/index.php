@@ -1,9 +1,11 @@
 <?php
-// index.php — FRONT CONTROLLER (главный файл проекта)
+// public/index.php — FRONT CONTROLLER
 session_start();
 
+$root = dirname(__DIR__);
+
 // Подключаем базу
-$pdo = require_once __DIR__ . '/db_connect.php';
+$pdo = require_once $root . '/config/db_connect.php';
 if (!($pdo instanceof PDO)) {
     die('Критическая ошибка подключения к базе');
 }
@@ -16,16 +18,12 @@ switch ($uri) {
     case '/index.php':
     case '/booking':
     case '/booking.php':
-        require_once __DIR__ . '/booking.php';
+        require_once $root . '/public/booking.php';
         break;
 
     case '/login':
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            require_once __DIR__ . '/login.php';
-        } else {
-            header('Location: /login.php');
-            exit;
-        }
+    case '/login.php':
+        require_once $root . '/public/login.php';
         break;
 
     case '/stats':
@@ -36,9 +34,9 @@ switch ($uri) {
             header('Location: /booking');
             exit;
         }
-        $file = substr($uri, 1) . '.php';
-        if (file_exists(__DIR__ . '/' . $file)) {
-            require_once __DIR__ . '/' . $file;
+        $file = $root . '/public/' . substr($uri, 1) . '.php';
+        if (file_exists($file)) {
+            require_once $file;
         } else {
             http_response_code(404);
             echo "<h1>404 — Файл не найден</h1>";
@@ -46,7 +44,7 @@ switch ($uri) {
         break;
 
     case '/logout':
-        require_once __DIR__ . '/logout.php';
+        require_once $root . '/public/logout.php';
         break;
 
     default:

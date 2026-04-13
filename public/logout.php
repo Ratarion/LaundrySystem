@@ -1,6 +1,7 @@
 <?php
 // logout.php — СКРИПТ ВЫХОДА
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
 
 // Если сессия еще не запущена (на случай прямого обращения к файлу)
 if (session_status() === PHP_SESSION_NONE) {
@@ -18,11 +19,11 @@ if (isset($_COOKIE[session_name()])) {
 // 3. Уничтожаем сессию на сервере
 session_destroy();
 
-// 4. Логируем выход (по желанию)
+// 4. Логируем выход
 if (isset($log)) {
     $log->info('Пользователь вышел из системы.');
 }
 
-// 5. Редирект на главную или страницу входа
+// 5. Редирект на главную
 header('Location: /booking.php');
 exit;

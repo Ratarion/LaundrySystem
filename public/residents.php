@@ -1,12 +1,16 @@
 <?php
 // residents.php — Управление жителями (Админ + Техник)
 session_start();
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
 
-require_once __DIR__ . '/db_connect.php';
+require_once $root . '/config/db_connect.php';
 if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
     die('Критическая ошибка подключения к базе.');
 }
+
+use Models\Resident;
+
 $pdo = $GLOBALS['pdo'];
 
 $log->info('Открыта страница Пользователи', ['ip' => $_SERVER['REMOTE_ADDR'], 'role' => $_SESSION['role'] ?? 0]);
@@ -26,33 +30,31 @@ $successMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['add_resident'])) {
-        $last_name  = trim($_POST['last_name']);
-        $first_name = trim($_POST['first_name']);
-        $room       = trim($_POST['inidroom']);
-
-        $stmt = $pdo->prepare("INSERT INTO residents (last_name, first_name, inidroom) VALUES (?, ?, ?)");
-        $stmt->execute([$last_name, $first_name, $room]);
-        $log->info('Добавлен новый житель', ['room' => $room, 'role' => $roleName]);
+        $resident = new Resident($pdo);
+        $resident->last_name  = trim($_POST['last_name']);
+        $resident->first_name = trim($_POST['first_name']);
+        $resident->inidroom   = trim($_POST['inidroom']);
+        $resident->save();
+        $log->info('Добавлен новый житель', ['room' => $resident->inidroom, 'role' => $roleName]);
         $successMessage = 'Житель успешно добавлен!';
     }
 
     if (isset($_POST['edit_resident'])) {
-        $id         = (int)$_POST['id'];
-        $last_name  = trim($_POST['last_name']);
-        $first_name = trim($_POST['first_name']);
-        $room       = trim($_POST['inidroom']);
-
-        $stmt = $pdo->prepare("UPDATE residents SET last_name = ?, first_name = ?, inidroom = ? WHERE id = ?");
-        $stmt->execute([$last_name, $first_name, $room, $id]);
-        $log->info('Отредактирован житель', ['id' => $id, 'role' => $roleName]);
+        $resident = new Resident($pdo);
+        $resident->load((int)$_POST['id']);
+        $resident->last_name  = trim($_POST['last_name']);
+        $resident->first_name = trim($_POST['first_name']);
+        $resident->inidroom   = trim($_POST['inidroom']);
+        $resident->save();
+        $log->info('Отредактирован житель', ['id' => $resident->id, 'role' => $roleName]);
         $successMessage = 'Данные жителя обновлены!';
     }
 
     if (isset($_POST['delete_id'])) {
-        $id = (int)$_POST['delete_id'];
-        $stmt = $pdo->prepare("DELETE FROM residents WHERE id = ?");
-        $stmt->execute([$id]);
-        $log->info('Удалён житель', ['id' => $id, 'role' => $roleName]);
+        $resident = new Resident($pdo);
+        $resident->load((int)$_POST['delete_id']);
+        $resident->delete();
+        $log->info('Удалён житель', ['id' => $_POST['delete_id'], 'role' => $roleName]);
         $successMessage = 'Житель успешно удалён!';
     }
 
@@ -65,18 +67,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ==================== ЗАГРУЗКА ДАННЫХ ====================
 $editResident = null;
 if (isset($_GET['edit'])) {
-    $editId = (int)$_GET['edit'];
-    $stmt = $pdo->prepare("SELECT * FROM residents WHERE id = ?");
-    $stmt->execute([$editId]);
-    $editResident = $stmt->fetch(PDO::FETCH_ASSOC);
+    $editResidentObj = new Resident($pdo);
+    if ($editResidentObj->load((int)$_GET['edit'])) {
+        $editResident = [
+            'id'         => $editResidentObj->id,
+            'last_name'  => $editResidentObj->last_name,
+            'first_name' => $editResidentObj->first_name,
+            'inidroom'   => $editResidentObj->inidroom
+        ];
+    }
 }
 
-$stmt = $pdo->query("SELECT * FROM residents ORDER BY last_name, first_name");
-$residents = $stmt->fetchAll();
+$residents = Resident::getAll($pdo);
 ?>
 
-<?php require_once __DIR__ . '/templates/header.php'; ?>
-<?php require_once __DIR__ . '/templates/navbar.php'; ?>
+<?php require_once $root . '/templates/header.php'; ?>
+<?php require_once $root . '/templates/navbar.php'; ?>
 
 <div style="flex: 1; padding: 20px;">
 
@@ -145,15 +151,15 @@ $residents = $stmt->fetchAll();
             <tbody>
                 <?php foreach ($residents as $r): ?>
                 <tr>
-                    <td style="padding:12px;"><?= $r['id'] ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($r['last_name']) ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($r['first_name']) ?></td>
-                    <td style="padding:12px; text-align:center; font-weight:600;"><?= htmlspecialchars($r['inidroom']) ?></td>
+                    <td style="padding:12px;"><?= $r->id ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($r->last_name) ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($r->first_name) ?></td>
+                    <td style="padding:12px; text-align:center; font-weight:600;"><?= htmlspecialchars($r->inidroom) ?></td>
                     <td style="padding:12px; text-align:center;">
-                        <a href="/residents?edit=<?= $r['id'] ?>" class="btn" style="background:#1976d2;color:#fff;padding:6px 14px;font-size:14px;text-decoration:none;border-radius:6px;margin-right:6px;">Редактировать</a>
+                        <a href="/residents?edit=<?= $r->id ?>" class="btn" style="background:#1976d2;color:#fff;padding:6px 14px;font-size:14px;text-decoration:none;border-radius:6px;margin-right:6px;">Редактировать</a>
                         
                         <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить жителя?')">
-                            <input type="hidden" name="delete_id" value="<?= $r['id'] ?>">
+                            <input type="hidden" name="delete_id" value="<?= $r->id ?>">
                             <button type="submit" class="btn btn-danger" style="padding:6px 14px;font-size:14px;">Удалить</button>
                         </form>
                     </td>
@@ -164,4 +170,4 @@ $residents = $stmt->fetchAll();
     </div>
 </div>
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+<?php require_once $root . '/templates/footer.php'; ?>

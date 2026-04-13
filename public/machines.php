@@ -1,12 +1,16 @@
 <?php
 // machines.php — Управление техникой (полные права у Админа и Техника)
 session_start();
-require_once __DIR__ . '/logger.php';
+$root = dirname(__DIR__);
+require_once $root . '/config/logger.php';
 
-require_once __DIR__ . '/db_connect.php';
+require_once $root . '/config/db_connect.php';
 if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
     die('Критическая ошибка подключения к базе.');
 }
+
+use Models\Machine;
+
 $pdo = $GLOBALS['pdo'];
 
 $log->info('Открыта страница Техника', ['ip' => $_SERVER['REMOTE_ADDR']]);
@@ -28,40 +32,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Добавление
     if (isset($_POST['add_machine'])) {
-        $type   = trim($_POST['type_machine']);
-        $number = trim($_POST['number_machine']);
-        $status = (int)$_POST['status'];
-
-        $stmt = $pdo->prepare("INSERT INTO machines (type_machine, number_machine, status) VALUES (?, ?, ?)");
-        $stmt->execute([$type, $number, $status]);
+        $machine = new Machine($pdo);
+        $machine->type_machine   = trim($_POST['type_machine']);
+        $machine->number_machine = trim($_POST['number_machine']);
+        $machine->status         = (int)$_POST['status'];
+        $machine->save();
         $successMessage = 'Машина успешно добавлена!';
     }
 
     // Редактирование
     if (isset($_POST['edit_machine'])) {
-        $id     = (int)$_POST['id'];
-        $type   = trim($_POST['type_machine']);
-        $number = trim($_POST['number_machine']);
-        $status = (int)$_POST['status'];
-
-        $stmt = $pdo->prepare("UPDATE machines SET type_machine = ?, number_machine = ?, status = ? WHERE id = ?");
-        $stmt->execute([$type, $number, $status, $id]);
+        $machine = new Machine($pdo);
+        $machine->load((int)$_POST['id']);
+        $machine->type_machine   = trim($_POST['type_machine']);
+        $machine->number_machine = trim($_POST['number_machine']);
+        $machine->status         = (int)$_POST['status'];
+        $machine->save();
         $successMessage = 'Машина успешно обновлена!';
     }
 
     // Удаление
     if (isset($_POST['delete_id'])) {
-        $id = (int)$_POST['delete_id'];
-        $stmt = $pdo->prepare("DELETE FROM machines WHERE id = ?");
-        $stmt->execute([$id]);
+        $machine = new Machine($pdo);
+        $machine->load((int)$_POST['delete_id']);
+        $machine->delete();
         $successMessage = 'Машина успешно удалена!';
     }
 
-    // Быстрое переключение статуса (Вкл ↔ Выкл)
+    // Быстрое переключение статуса
     if (isset($_POST['toggle_id'])) {
-        $id = (int)$_POST['toggle_id'];
-        $stmt = $pdo->prepare("UPDATE machines SET status = 1 - status WHERE id = ?");
-        $stmt->execute([$id]);
+        $machine = new Machine($pdo);
+        $machine->load((int)$_POST['toggle_id']);
+        $machine->toggleStatus();
         $successMessage = 'Статус машины изменён!';
     }
 
@@ -71,21 +73,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Загрузка данных
+// ==================== ЗАГРУЗКА ДАННЫХ ====================
 $editMachine = null;
 if (isset($_GET['edit'])) {
-    $editId = (int)$_GET['edit'];
-    $stmt = $pdo->prepare("SELECT * FROM machines WHERE id = ?");
-    $stmt->execute([$editId]);
-    $editMachine = $stmt->fetch(PDO::FETCH_ASSOC);
+    $editMachineObj = new Machine($pdo);
+    if ($editMachineObj->load((int)$_GET['edit'])) {
+        $editMachine = [
+            'id'             => $editMachineObj->id,
+            'type_machine'   => $editMachineObj->type_machine,
+            'number_machine' => $editMachineObj->number_machine,
+            'status'         => $editMachineObj->status
+        ];
+    }
 }
 
-$stmt = $pdo->query("SELECT * FROM machines ORDER BY type_machine, number_machine");
-$machines = $stmt->fetchAll();
+$machines = Machine::getAll($pdo);
 ?>
 
-<?php require_once __DIR__ . '/templates/header.php'; ?>
-<?php require_once __DIR__ . '/templates/navbar.php'; ?>
+<?php require_once $root . '/templates/header.php'; ?>
+<?php require_once $root . '/templates/navbar.php'; ?>
 
 <div style="flex: 1; padding: 20px;">
 
@@ -158,17 +164,17 @@ $machines = $stmt->fetchAll();
             </thead>
             <tbody>
                 <?php foreach ($machines as $m): 
-                    $isActive = $m['status'] == 1;
+                    $isActive = $m->status == 1;
                 ?>
                 <tr>
-                    <td style="padding:12px;"><?= $m['id'] ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($m['type_machine']) ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($m['number_machine']) ?></td>
+                    <td style="padding:12px;"><?= $m->id ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($m->type_machine) ?></td>
+                    <td style="padding:12px;"><?= htmlspecialchars($m->number_machine) ?></td>
                     
                     <!-- Красивый тоггл -->
                     <td style="padding:12px; text-align:center;">
                         <form method="POST" style="display:inline;">
-                            <input type="hidden" name="toggle_id" value="<?= $m['id'] ?>">
+                            <input type="hidden" name="toggle_id" value="<?= $m->id ?>">
                             <label class="switch">
                                 <input type="checkbox" <?= $isActive ? 'checked' : '' ?> onchange="this.form.submit()">
                                 <span class="slider"></span>
@@ -177,10 +183,10 @@ $machines = $stmt->fetchAll();
                     </td>
 
                     <td style="padding:12px; text-align:center;">
-                        <a href="/machines?edit=<?= $m['id'] ?>" class="btn" style="background:#1976d2;color:#fff;padding:6px 14px;font-size:14px;text-decoration:none;border-radius:6px;margin-right:6px;">Редактировать</a>
+                        <a href="/machines?edit=<?= $m->id ?>" class="btn" style="background:#1976d2;color:#fff;padding:6px 14px;font-size:14px;text-decoration:none;border-radius:6px;margin-right:6px;">Редактировать</a>
                         
                         <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить машину?')">
-                            <input type="hidden" name="delete_id" value="<?= $m['id'] ?>">
+                            <input type="hidden" name="delete_id" value="<?= $m->id ?>">
                             <button type="submit" class="btn btn-danger" style="padding:6px 14px;font-size:14px;">Удалить</button>
                         </form>
                     </td>
@@ -191,4 +197,4 @@ $machines = $stmt->fetchAll();
     </div>
 </div>
 
-<?php require_once __DIR__ . '/templates/footer.php'; ?>
+<?php require_once $root . '/templates/footer.php'; ?>
