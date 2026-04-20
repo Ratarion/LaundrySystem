@@ -1,94 +1,11 @@
 <?php
-// residents.php — Управление жителями (Админ + Техник)
-session_start();
-$root = dirname(__DIR__);
-require_once $root . '/config/logger.php';
-
-require_once $root . '/config/db_connect.php';
-if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    die('Критическая ошибка подключения к базе.');
-}
-
-use Models\Resident;
-
-$pdo = $GLOBALS['pdo'];
-
-$log->info('Открыта страница Пользователи', ['ip' => $_SERVER['REMOTE_ADDR'], 'role' => $_SESSION['role'] ?? 0]);
-
-// Разрешаем доступ и Админу, и Технику
-if (!isset($_SESSION['admin_id'])) {
-    header('Location: /booking');
-    exit;
-}
-
-$role = $_SESSION['role'] ?? 0;
-$roleName = $role === 1 ? 'Администратор' : 'Техник';
-
-// ==================== ОБРАБОТКА ДЕЙСТВИЙ ====================
-$successMessage = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    if (isset($_POST['add_resident'])) {
-        $resident = new Resident($pdo);
-        $resident->last_name  = trim($_POST['last_name']);
-        $resident->first_name = trim($_POST['first_name']);
-        $resident->inidroom   = trim($_POST['inidroom']);
-        $resident->save();
-        $log->info('Добавлен новый житель', ['room' => $resident->inidroom, 'role' => $roleName]);
-        $successMessage = 'Житель успешно добавлен!';
-    }
-
-    if (isset($_POST['edit_resident'])) {
-        $resident = new Resident($pdo);
-        $resident->load((int)$_POST['id']);
-        $resident->last_name  = trim($_POST['last_name']);
-        $resident->first_name = trim($_POST['first_name']);
-        $resident->inidroom   = trim($_POST['inidroom']);
-        $resident->save();
-        $log->info('Отредактирован житель', ['id' => $resident->id, 'role' => $roleName]);
-        $successMessage = 'Данные жителя обновлены!';
-    }
-
-    if (isset($_POST['delete_id'])) {
-        $resident = new Resident($pdo);
-        $resident->load((int)$_POST['delete_id']);
-        $resident->delete();
-        $log->info('Удалён житель', ['id' => $_POST['delete_id'], 'role' => $roleName]);
-        $successMessage = 'Житель успешно удалён!';
-    }
-
-    if ($successMessage) {
-        header("Location: /residents?success=" . urlencode($successMessage));
-        exit;
-    }
-}
-
-// ==================== ЗАГРУЗКА ДАННЫХ ====================
-$editResident = null;
-if (isset($_GET['edit'])) {
-    $editResidentObj = new Resident($pdo);
-    if ($editResidentObj->load((int)$_GET['edit'])) {
-        $editResident = [
-            'id'         => $editResidentObj->id,
-            'last_name'  => $editResidentObj->last_name,
-            'first_name' => $editResidentObj->first_name,
-            'inidroom'   => $editResidentObj->inidroom
-        ];
-    }
-}
-
-$residents = Resident::getAll($pdo);
+// views/residents.php
 ?>
-
-<?php require_once $root . '/templates/header.php'; ?>
-<?php require_once $root . '/templates/navbar.php'; ?>
-
 <div style="flex: 1; padding: 20px;">
 
-    <?php if (isset($_GET['success'])): ?>
+    <?php if (isset($success)): ?>
         <div id="success-toast" class="toast-notification">
-            <div class="toast-content">✅ <?= htmlspecialchars($_GET['success']) ?></div>
+            <div class="toast-content">✅ <?= e($success) ?></div>
             <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
         </div>
     <?php endif; ?>
@@ -96,7 +13,7 @@ $residents = Resident::getAll($pdo);
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>👨‍🎓 Пользователи (Жители)</h1>
         <span style="color: #4caf50; font-weight: 600;">
-            👤 <?= htmlspecialchars($_SESSION['username']) ?> <small>(<?= $roleName ?>)</small>
+            👤 <?= e($_SESSION['username']) ?> <small>(<?= e($roleName) ?>)</small>
         </span>
     </div>
 
@@ -112,17 +29,17 @@ $residents = Resident::getAll($pdo);
             <?php endif; ?>
 
             <label style="flex: 1;">Фамилия<br>
-                <input type="text" name="last_name" value="<?= htmlspecialchars($editResident['last_name'] ?? '') ?>" required
+                <input type="text" name="last_name" value="<?= e($editResident['last_name'] ?? '') ?>" required
                        style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
             </label>
 
             <label style="flex: 1;">Имя<br>
-                <input type="text" name="first_name" value="<?= htmlspecialchars($editResident['first_name'] ?? '') ?>" required
+                <input type="text" name="first_name" value="<?= e($editResident['first_name'] ?? '') ?>" required
                        style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
             </label>
 
             <label style="flex: 1;">Комната<br>
-                <input type="text" name="inidroom" value="<?= htmlspecialchars($editResident['inidroom'] ?? '') ?>" required
+                <input type="text" name="inidroom" value="<?= e($editResident['inidroom'] ?? '') ?>" required
                        style="width:100%; padding:12px; border-radius:8px; background:#2a2a2a; color:#fff; border:none;">
             </label>
 
@@ -152,9 +69,9 @@ $residents = Resident::getAll($pdo);
                 <?php foreach ($residents as $r): ?>
                 <tr>
                     <td style="padding:12px;"><?= $r->id ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($r->last_name) ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($r->first_name) ?></td>
-                    <td style="padding:12px; text-align:center; font-weight:600;"><?= htmlspecialchars($r->inidroom) ?></td>
+                    <td style="padding:12px;"><?= e($r->last_name) ?></td>
+                    <td style="padding:12px;"><?= e($r->first_name) ?></td>
+                    <td style="padding:12px; text-align:center; font-weight:600;"><?= e($r->inidroom) ?></td>
                     <td style="padding:12px; text-align:center;">
                         <a href="/residents?edit=<?= $r->id ?>" class="btn" style="background:#1976d2;color:#fff;padding:6px 14px;font-size:14px;text-decoration:none;border-radius:6px;margin-right:6px;">Редактировать</a>
                         
@@ -169,5 +86,3 @@ $residents = Resident::getAll($pdo);
         </table>
     </div>
 </div>
-
-<?php require_once $root . '/templates/footer.php'; ?>

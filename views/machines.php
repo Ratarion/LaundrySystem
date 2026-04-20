@@ -1,103 +1,11 @@
 <?php
-// machines.php — Управление техникой (полные права у Админа и Техника)
-session_start();
-$root = dirname(__DIR__);
-require_once $root . '/config/logger.php';
-
-require_once $root . '/config/db_connect.php';
-if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    die('Критическая ошибка подключения к базе.');
-}
-
-use Models\Machine;
-
-$pdo = $GLOBALS['pdo'];
-
-$log->info('Открыта страница Техника', ['ip' => $_SERVER['REMOTE_ADDR']]);
-
-$role = $_SESSION['role'] ?? 0;
-$isLoggedIn = isset($_SESSION['admin_id']);
-
-if (!$isLoggedIn) {
-    header('Location: /booking');
-    exit;
-}
-
-$roleName = $role === 1 ? 'Администратор' : 'Техник';
-
-// ==================== ОБРАБОТКА ДЕЙСТВИЙ ====================
-$successMessage = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    // Добавление
-    if (isset($_POST['add_machine'])) {
-        $machine = new Machine($pdo);
-        $machine->type_machine   = trim($_POST['type_machine']);
-        $machine->number_machine = trim($_POST['number_machine']);
-        $machine->status         = (int)$_POST['status'];
-        $machine->save();
-        $successMessage = 'Машина успешно добавлена!';
-    }
-
-    // Редактирование
-    if (isset($_POST['edit_machine'])) {
-        $machine = new Machine($pdo);
-        $machine->load((int)$_POST['id']);
-        $machine->type_machine   = trim($_POST['type_machine']);
-        $machine->number_machine = trim($_POST['number_machine']);
-        $machine->status         = (int)$_POST['status'];
-        $machine->save();
-        $successMessage = 'Машина успешно обновлена!';
-    }
-
-    // Удаление
-    if (isset($_POST['delete_id'])) {
-        $machine = new Machine($pdo);
-        $machine->load((int)$_POST['delete_id']);
-        $machine->delete();
-        $successMessage = 'Машина успешно удалена!';
-    }
-
-    // Быстрое переключение статуса
-    if (isset($_POST['toggle_id'])) {
-        $machine = new Machine($pdo);
-        $machine->load((int)$_POST['toggle_id']);
-        $machine->toggleStatus();
-        $successMessage = 'Статус машины изменён!';
-    }
-
-    if ($successMessage) {
-        header("Location: /machines?success=" . urlencode($successMessage));
-        exit;
-    }
-}
-
-// ==================== ЗАГРУЗКА ДАННЫХ ====================
-$editMachine = null;
-if (isset($_GET['edit'])) {
-    $editMachineObj = new Machine($pdo);
-    if ($editMachineObj->load((int)$_GET['edit'])) {
-        $editMachine = [
-            'id'             => $editMachineObj->id,
-            'type_machine'   => $editMachineObj->type_machine,
-            'number_machine' => $editMachineObj->number_machine,
-            'status'         => $editMachineObj->status
-        ];
-    }
-}
-
-$machines = Machine::getAll($pdo);
+// views/machines.php
 ?>
-
-<?php require_once $root . '/templates/header.php'; ?>
-<?php require_once $root . '/templates/navbar.php'; ?>
-
 <div style="flex: 1; padding: 20px;">
 
-    <?php if (isset($_GET['success'])): ?>
+    <?php if (isset($success)): ?>
         <div id="success-toast" class="toast-notification">
-            <div class="toast-content">✅ <?= htmlspecialchars($_GET['success']) ?></div>
+            <div class="toast-content">✅ <?= e($success) ?></div>
             <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
         </div>
     <?php endif; ?>
@@ -105,7 +13,7 @@ $machines = Machine::getAll($pdo);
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>🛠️ Техника</h1>
         <span style="color: #4caf50; font-weight: 600;">
-            👤 <?= htmlspecialchars($_SESSION['username']) ?> <small>(<?= $roleName ?>)</small>
+            👤 <?= e($_SESSION['username']) ?> <small>(<?= e($roleName) ?>)</small>
         </span>
     </div>
 
@@ -128,7 +36,7 @@ $machines = Machine::getAll($pdo);
             </label>
 
             <label style="flex:1;">Номер / Название<br>
-                <input type="text" name="number_machine" value="<?= htmlspecialchars($editMachine['number_machine'] ?? '') ?>" 
+                <input type="text" name="number_machine" value="<?= e($editMachine['number_machine'] ?? '') ?>" 
                        placeholder="Например: #5 или 3 этаж" required
                        style="width:100%;padding:12px;border-radius:8px;background:#2a2a2a;color:#fff;border:none;">
             </label>
@@ -168,8 +76,8 @@ $machines = Machine::getAll($pdo);
                 ?>
                 <tr>
                     <td style="padding:12px;"><?= $m->id ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($m->type_machine) ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($m->number_machine) ?></td>
+                    <td style="padding:12px;"><?= e($m->type_machine) ?></td>
+                    <td style="padding:12px;"><?= e($m->number_machine) ?></td>
                     
                     <!-- Красивый тоггл -->
                     <td style="padding:12px; text-align:center;">
@@ -196,5 +104,3 @@ $machines = Machine::getAll($pdo);
         </table>
     </div>
 </div>
-
-<?php require_once $root . '/templates/footer.php'; ?>

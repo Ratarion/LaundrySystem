@@ -1,55 +1,11 @@
 <?php
-// notifications.php — Уведомления жителям
-session_start();
-$root = dirname(__DIR__);
-require_once $root . '/config/logger.php';
-
-require_once $root . '/config/db_connect.php';
-if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    die('Критическая ошибка подключения к базе.');
-}
-
-use Models\Notification;
-
-$pdo = $GLOBALS['pdo'];
-
-$log->info('Открыта страница Уведомления', ['ip' => $_SERVER['REMOTE_ADDR']]);
-
-if (!isset($_SESSION['admin_id'])) {
-    header('Location: /booking');
-    exit;
-}
-
-$roleName = ($_SESSION['role'] ?? 0) === 1 ? 'Администратор' : 'Техник';
-
-// ==================== ОТПРАВКА УВЕДОМЛЕНИЯ ====================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification'])) {
-    $notification = new Notification($pdo);
-    $notification->id_residents = (int)$_POST['resident_id'];
-    $notification->description  = trim($_POST['description']);
-    $notification->save();
-
-    $log->info('Отправлено уведомление', ['resident_id' => $notification->id_residents, 'role' => $roleName]);
-
-    header("Location: /notifications?success=Уведомление успешно отправлено!");
-    exit;
-}
-
-// ==================== ЗАГРУЗКА ДАННЫХ ====================
-$notifications = Notification::getAll($pdo);
-
-// Все жители для формы (используем статический метод из модели)
-$residents = Notification::getAllResidents($pdo);
+// views/notifications.php
 ?>
-
-<?php require_once $root . '/templates/header.php'; ?>
-<?php require_once $root . '/templates/navbar.php'; ?>
-
 <div style="flex: 1; padding: 20px;">
 
-    <?php if (isset($_GET['success'])): ?>
+    <?php if (isset($success)): ?>
         <div id="success-toast" class="toast-notification">
-            <div class="toast-content">✅ <?= htmlspecialchars($_GET['success']) ?></div>
+            <div class="toast-content">✅ <?= e($success) ?></div>
             <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
         </div>
     <?php endif; ?>
@@ -57,7 +13,7 @@ $residents = Notification::getAllResidents($pdo);
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>🛎️ Уведомления</h1>
         <span style="color: #4caf50; font-weight: 600;">
-            👤 <?= htmlspecialchars($_SESSION['username']) ?> <small>(<?= $roleName ?>)</small>
+            👤 <?= e($_SESSION['username']) ?> <small>(<?= e($roleName) ?>)</small>
         </span>
     </div>
 
@@ -73,7 +29,7 @@ $residents = Notification::getAllResidents($pdo);
                     <option value="">Выберите жителя...</option>
                     <?php foreach ($residents as $r): ?>
                     <option value="<?= $r['id'] ?>">
-                        <?= htmlspecialchars($r['last_name'] . ' ' . $r['first_name']) ?> (комн. <?= $r['inidroom'] ?>)
+                        <?= e($r['last_name'] . ' ' . $r['first_name']) ?> (комн. <?= e($r['inidroom']) ?>)
                     </option>
                     <?php endforeach; ?>
                 </select>
@@ -104,14 +60,12 @@ $residents = Notification::getAllResidents($pdo);
             <tbody>
                 <?php foreach ($notifications as $n): ?>
                 <tr>
-                    <td style="padding:12px;"><?= $n->create_date ?></td>
-                    <td style="padding:12px;"><?= htmlspecialchars($n->resident_name) ?> (<?= $n->inidroom ?>)</td>
-                    <td style="padding:12px;"><?= htmlspecialchars($n->description) ?></td>
+                    <td style="padding:12px;"><?= e($n->create_date) ?></td>
+                    <td style="padding:12px;"><?= e($n->resident_name) ?> (<?= e($n->inidroom) ?>)</td>
+                    <td style="padding:12px;"><?= e($n->description) ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </div>
-
-<?php require_once $root . '/templates/footer.php'; ?>

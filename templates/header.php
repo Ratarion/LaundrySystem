@@ -1,4 +1,11 @@
 <!-- шапка + имя пользователя + роль -->
+<?php
+if (!function_exists('e')) {
+    function e($string) {
+        return htmlspecialchars($string ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>

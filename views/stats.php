@@ -1,86 +1,26 @@
 <?php
-// stats.php — Статистика (ТОЛЬКО для Администратора)
-session_start();
-$root = dirname(__DIR__);
-require_once $root . '/config/logger.php';
-
-require_once $root . '/config/db_connect.php';
-if (!isset($GLOBALS['pdo']) || !($GLOBALS['pdo'] instanceof PDO)) {
-    die('Критическая ошибка подключения к базе.');
-}
-
-use Models\Booking;
-
-$pdo = $GLOBALS['pdo'];
-
-if (($_SESSION['role'] ?? 0) !== 1) {
-    header('Location: /booking');
-    exit;
-}
-
-$log->info('Открыта страница Статистика (Админ)', ['ip' => $_SERVER['REMOTE_ADDR']]);
-
-$from = $_POST['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
-$to   = $_POST['date_to']   ?? date('Y-m-d');
-
-// Получаем все бронирования за период через модель
-$bookingsData = Booking::getAll($pdo, $from, $to);
-
-// ==================== РЕАЛЬНАЯ СТАТИСТИКА ====================
-
-$totalBookings = count($bookingsData);
-
-$cancelledCount = 0;
-$activeCount    = 0;
-$byType         = [];
-$dailyData      = [];
-$topMachines    = [];
-
-foreach ($bookingsData as $b) {
-    $status = $b['status'];
-    if (in_array($status, ['cancelled', 'Отменено'])) {
-        $cancelledCount++;
-    } else {
-        $activeCount++;
-    }
-
-    // По типу машин
-    $type = $b['type_machine'];
-    $byType[$type] = ($byType[$type] ?? 0) + 1;
-
-    // По дням
-    $day = substr($b['start_time'], 0, 10); // YYYY-MM-DD
-    $dailyData[$day] = ($dailyData[$day] ?? 0) + 1;
-
-    // Топ-5 машин
-    $machineKey = $b['type_machine'] . ' #' . $b['number_machine'];
-    $topMachines[$machineKey] = ($topMachines[$machineKey] ?? 0) + 1;
-}
-
-// Сортируем топ-5
-arsort($topMachines);
-$topMachines = array_slice($topMachines, 0, 5, true);
-
-// Преобразуем для графика
-$dailyLabels = array_keys($dailyData);
-$dailyCounts = array_values($dailyData);
+// views/stats.php
 ?>
-
-<?php require_once $root . '/templates/header.php'; ?>
-<?php require_once $root . '/templates/navbar.php'; ?>
-
 <div style="flex: 1; padding: 20px;">
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
         <h1>📊 Статистика</h1>
-        <span style="color:#4caf50; font-weight:600;">👤 <?= htmlspecialchars($_SESSION['username']) ?> <small>(Администратор)</small></span>
+        <span style="color:#4caf50; font-weight:600;">👤 <?= e($_SESSION['username']) ?> <small>(Администратор)</small></span>
     </div>
 
     <!-- Фильтр -->
     <form method="POST" style="background:#1f1f1f;padding:20px;border-radius:12px;margin-bottom:30px;display:flex;gap:15px;align-items:end;flex-wrap:wrap;">
-        <label>Дата с: <input type="date" name="date_from" value="<?= htmlspecialchars($from) ?>"></label>
-        <label>Дата по: <input type="date" name="date_to" value="<?= htmlspecialchars($to) ?>"></label>
+        <label>Дата с: <input type="date" name="date_from" value="<?= e($from) ?>"></label>
+        <label>Дата по: <input type="date" name="date_to" value="<?= e($to) ?>"></label>
         <button type="submit" class="btn btn-primary">Показать</button>
+        <a href="/stats/export/xlsx?from=<?= e($from) ?>&to=<?= e($to) ?>" 
+           class="btn btn-primary" style="background:#4caf50; margin-left:10px;">
+            📊 Экспорт в Excel
+        </a>
+        <a href="/stats/export/docx?from=<?= e($from) ?>&to=<?= e($to) ?>" 
+           class="btn btn-primary" style="background:#1976d2; margin-left:10px;">
+            📄 Экспорт в Word
+        </a>
     </form>
 
     <!-- Карточки -->
@@ -114,7 +54,7 @@ $dailyCounts = array_values($dailyData);
             <tbody>
                 <?php foreach ($topMachines as $machine => $cnt): ?>
                 <tr>
-                    <td><?= htmlspecialchars($machine) ?></td>
+                    <td><?= e($machine) ?></td>
                     <td style="font-weight:600;"><?= $cnt ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -122,8 +62,6 @@ $dailyCounts = array_values($dailyData);
         </table>
     </div>
 </div>
-
-<?php require_once $root . '/templates/footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>

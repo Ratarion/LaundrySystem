@@ -1,5 +1,5 @@
 <?php
-// templates/navbar.php — меню с учётом роли
+// templates/navbar.php
 $current_uri = $_SERVER['REQUEST_URI'] ?? '/';
 $isAdmin = ($_SESSION['role'] ?? 0) === 1;
 ?>
@@ -46,7 +46,7 @@ $isAdmin = ($_SESSION['role'] ?? 0) === 1;
 
         <?php if (isset($_SESSION['admin_id'])): ?>
         <li style="margin-top: 30px;">
-            <a href="/logout.php" class="menu-link logout">
+            <a href="/logout" class="menu-link logout">
                 🚪 <span>Выход</span>
             </a>
         </li>
