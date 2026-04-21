@@ -13,7 +13,7 @@ if (!($pdo instanceof PDO)) {
     die('Критическая ошибка подключения к базе');
 }
 
-// Автозагрузка наших контроллеров
+// Автозагрузка контроллеров
 spl_autoload_register(function ($class) use ($root) {
     if (strpos($class, 'App\\Controllers\\') === 0) {
         $file = $root . '/app/Controllers/' . str_replace('App\\Controllers\\', '', $class) . '.php';
