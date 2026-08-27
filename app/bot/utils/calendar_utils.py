@@ -27,7 +27,7 @@ from vkbottle import Keyboard, Callback, KeyboardButtonColor
 
 from app.bot.keyboards import get_texts
 
-DAY_ROW_SIZE = 5          # кнопок дней в строке
+DAY_ROW_SIZE = 3          # кнопок дней в строке
 WINDOW_SIZE = 7           # дней показываем за раз (1 неделя) — см. докстринг выше
 HORIZON_DAYS = 63         # дальше этого не даём листать вперёд (9 недель)
 CUTOFF_HOUR = 23          # после этого часа "сегодня" уже нельзя забронировать
