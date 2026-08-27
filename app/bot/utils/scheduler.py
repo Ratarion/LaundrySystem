@@ -114,7 +114,7 @@ async def check_confirmations(bot: Bot):
                     random_id=0,
                     keyboard=get_confirm_keyboard(db_b.id, lang or "RU"),
                 )
-                await set_booking_status(db_b.id, "Ожидание")
+                await set_booking_status(db_b.id, "Ожидание подтверждения")
                 logging.info(f"Sent confirmation request for booking {db_b.id} to {user.vk_id}")
                 await asyncio.sleep(0.05)
             except Exception as e:

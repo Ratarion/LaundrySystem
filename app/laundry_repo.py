@@ -421,9 +421,9 @@ async def set_booking_status(booking_id: int, status: str):
         await session.commit()
 
 async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
-    """Ищет записи, которые вот-вот начнутся (30 мин), но статус 'wait_confirm' (не подтвердили)"""
+    """Ищет записи, которые вот-вот начнутся (30 мин), но статус все еще не 'Подтверждено'"""
     now = datetime.now()
-    # Если время старта <= now + 30 min и статус все еще wait_confirm
+    # Если время старта <= now + 30 min и статус все еще не подтверждён
     # Берем записи, которые стартуют в ближайшие 30-31 минуту
     target_time = now + timedelta(minutes=minutes_before_deadline)
     window = timedelta(minutes=2)
@@ -433,7 +433,10 @@ async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
             and_(
                 Booking.start_time <= target_time + window,
                 Booking.start_time >= target_time,
-                Booking.status == 'Ожидание'
+                # "Ожидание" — на случай, если отправить напоминание не удалось (см. scheduler.py)
+                # и бронь так и осталась в исходном статусе; "Ожидание подтверждения" — обычный
+                # путь после того, как напоминание с кнопкой было успешно отправлено.
+                Booking.status.in_(['Ожидание', 'Ожидание подтверждения'])
             )
         )
         result = await session.execute(query)

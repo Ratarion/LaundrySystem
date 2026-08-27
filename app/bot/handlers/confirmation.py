@@ -28,5 +28,13 @@ async def process_confirm(event: MessageEvent):
         await event.edit_message(t["booking_confirmed"])
         return
 
+    if booking.status == "Отменено":
+        # Бронь уже была автоматически отменена планировщиком (пользователь
+        # не успел подтвердить вовремя) — не воскрешаем её повторным нажатием
+        # на устаревшую кнопку из старого сообщения.
+        await event.show_snackbar(t.get("booking_already_canceled", t["cancel_error"]))
+        await event.edit_message(t.get("booking_already_canceled", t["cancel_error"]))
+        return
+
     await set_booking_status(booking_id, "Подтверждено")
     await event.edit_message(t["booking_confirmed"])

@@ -25,6 +25,7 @@ ENtexts = {
         "booking_confirmed": "✅ Booking confirmed! We are waiting for you.",
         "booking_autocanceled": "❌ Your booking Date: {date} Time: {time_range} Machine: {machine_type} №{machine_num} was automatically canceled because you did not confirm it in time.",
         "booking_already_confirmed": "This booking has already been confirmed or canceled.",
+        "booking_already_canceled": "This booking was automatically canceled (you did not confirm it in time).",
         "for_wash": "for washing",
         "for_dry": "for drying",
 
