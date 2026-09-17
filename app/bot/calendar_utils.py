@@ -13,11 +13,12 @@ class CustomLaundryCalendar(SimpleCalendar):
     calendar_callback = CustomLaundryCalendarCallback
 
     def __init__(self, workload: dict, max_capacity: int, locale: str = 'ru'):
-        # Ensure locale is lowercase for consistency
-        super().__init__(locale=locale.lower(), show_alerts=True)
+        # Pass locale=None to prevent aiogram_calendar from calling calendar.different_locale(locale),
+        # which crashes with locale.Error: unsupported locale setting in Linux Docker containers.
+        super().__init__(locale=None, show_alerts=True)
         self.workload = workload
         self.max_capacity = max_capacity
-        self.locale = locale.lower()
+        self.locale = locale.lower() if locale else 'ru'
         
         self.months_names = {
             1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
@@ -60,10 +61,15 @@ class CustomLaundryCalendar(SimpleCalendar):
         title_btn = InlineKeyboardButton(text=title_text, callback_data="ignore_action")
         new_inline_keyboard.append([title_btn])
 
-        # 2. WEEKDAYS ROW
-        # In SimpleCalendar: index 2 usually contains weekdays (Mo, Tu, We...)
-        if len(original_kb) > 2:
-            new_inline_keyboard.append(original_kb[2])
+        # 2. WEEKDAYS ROW (Localized)
+        weekdays_map = {
+            'ru': ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
+            'en': ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+            'cn': ["一", "二", "三", "四", "五", "六", "日"],
+            'zh': ["一", "二", "三", "四", "五", "六", "日"]
+        }
+        weekdays = weekdays_map.get(self.locale, weekdays_map['ru'])
+        new_inline_keyboard.append([InlineKeyboardButton(text=w, callback_data="ignore_action") for w in weekdays])
 
         # 3. DATE ROWS
         # SimpleCalendar usually puts days from index 3 up to the footer.
