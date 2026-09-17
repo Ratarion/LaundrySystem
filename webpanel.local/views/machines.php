@@ -86,9 +86,9 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Номер / Название</label>
-                <input type="text" name="number_machine" value="<?= e($editMachine['number_machine'] ?? '') ?>" 
-                       placeholder="Например: #5 или 3 этаж" required class="form-control">
+                <label class="form-label">Номер машины</label>
+                <input type="number" name="number_machine" min="1" max="999" value="<?= e($editMachine['number_machine'] ?? '') ?>" 
+                       placeholder="Например: 5" required class="form-control">
             </div>
 
             <div class="form-group">

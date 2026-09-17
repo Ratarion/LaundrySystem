@@ -22,17 +22,30 @@ class MachineController extends BaseController
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (isset($_POST['add_machine'])) {
+                $num = filter_var(trim($_POST['number_machine'] ?? ''), FILTER_VALIDATE_INT);
+                if ($num === false || $num <= 0) {
+                    $this->redirect('/machines?error=' . urlencode('Номер машины должен быть положительным целым числом (например: 1, 2, 3...)!'));
+                }
+
                 $machine = new Machine($this->pdo);
                 $machine->dormitory_id   = $sessionDormId !== null ? $sessionDormId : (int)($_POST['dormitory_id'] ?? 1);
                 $machine->type_machine   = trim($_POST['type_machine']);
-                $machine->number_machine = trim($_POST['number_machine']);
+                $machine->number_machine = $num;
                 $machine->status         = (int)$_POST['status'];
-                $machine->save();
-                $this->log->info('Добавлена машина', ['dormitory_id' => $machine->dormitory_id, 'number' => $machine->number_machine]);
-                $successMessage = 'Машина успешно добавлена!';
+                if ($machine->save()) {
+                    $this->log->info('Добавлена машина', ['dormitory_id' => $machine->dormitory_id, 'number' => $machine->number_machine]);
+                    $successMessage = 'Машина успешно добавлена!';
+                } else {
+                    $this->redirect('/machines?error=' . urlencode('Ошибка при сохранении машины в базе данных.'));
+                }
             }
 
             if (isset($_POST['edit_machine'])) {
+                $num = filter_var(trim($_POST['number_machine'] ?? ''), FILTER_VALIDATE_INT);
+                if ($num === false || $num <= 0) {
+                    $this->redirect('/machines?error=' . urlencode('Номер машины должен быть положительным целым числом (например: 1, 2, 3...)!'));
+                }
+
                 $machine = new Machine($this->pdo);
                 $machine->load((int)$_POST['id']);
 
@@ -42,11 +55,14 @@ class MachineController extends BaseController
 
                 $machine->dormitory_id   = $sessionDormId !== null ? $sessionDormId : (int)($_POST['dormitory_id'] ?? 1);
                 $machine->type_machine   = trim($_POST['type_machine']);
-                $machine->number_machine = trim($_POST['number_machine']);
+                $machine->number_machine = $num;
                 $machine->status         = (int)$_POST['status'];
-                $machine->save();
-                $this->log->info('Отредактирована машина', ['id' => $machine->id]);
-                $successMessage = 'Машина успешно обновлена!';
+                if ($machine->save()) {
+                    $this->log->info('Отредактирована машина', ['id' => $machine->id]);
+                    $successMessage = 'Машина успешно обновлена!';
+                } else {
+                    $this->redirect('/machines?error=' . urlencode('Ошибка при обновлении машины в базе данных.'));
+                }
             }
 
             if (isset($_POST['delete_id'])) {
