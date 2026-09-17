@@ -1,0 +1,15 @@
+services:
+  tgbot:
+    build: .
+    container_name: layndaru-tgbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN:-YOUR_TG_BOT_TOKEN}
+      - HOST=${HOST:-194.226.123.222}
+      - PORT=${PORT:-5432}
+      - DBNAME=${DBNAME:-layndaru_db}
+      - USER=${USER:-postgres}
+      - PASSWORD=${PASSWORD:-postgres}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@194.226.123.222:5432/layndaru_db}
