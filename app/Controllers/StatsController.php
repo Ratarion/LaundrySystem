@@ -11,8 +11,12 @@ class StatsController extends BaseController
 {
     public function index()
     {
+        if (!isset($_SESSION['admin_id'])) {
+            $this->redirect('/login?error=' . urlencode('Доступ запрещён. Пожалуйста, войдите в систему.'));
+        }
+
         if (($_SESSION['role'] ?? 0) !== 1) {
-            $this->redirect('/booking');
+            $this->redirect('/booking?error=' . urlencode('Недостаточно прав для просмотра статистики.'));
         }
 
         $this->log->info('Открыта страница Статистика (Админ)', ['ip' => $_SERVER['REMOTE_ADDR']]);
@@ -20,7 +24,20 @@ class StatsController extends BaseController
         $from = $_POST['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
         $to   = $_POST['date_to']   ?? date('Y-m-d');
 
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $from = date('Y-m-d', strtotime('-30 days'));
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $to = date('Y-m-d');
+        }
+
+        $sessionDormId = !empty($_SESSION['dormitory_id']) ? (int)$_SESSION['dormitory_id'] : null;
+        $role = $_SESSION['role'] ?? 0;
+        $roleName = getUserRoleTitle($role, $sessionDormId, $_SESSION['dormitory_name'] ?? null);
+
         $data = $this->getReportData($from, $to);
+        $data['roleName'] = $roleName;
+        $data['sessionDormId'] = $sessionDormId;
 
         $this->render('stats', $data);
     }
@@ -30,12 +47,23 @@ class StatsController extends BaseController
      */
     public function exportXlsx()
     {
+        if (!isset($_SESSION['admin_id'])) {
+            $this->redirect('/login?error=' . urlencode('Доступ запрещён. Пожалуйста, войдите в систему.'));
+        }
+
         if (($_SESSION['role'] ?? 0) !== 1) {
-            $this->redirect('/booking');
+            $this->redirect('/booking?error=' . urlencode('Недостаточно прав для просмотра статистики.'));
         }
 
         $from = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
         $to   = $_GET['to']   ?? date('Y-m-d');
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $from = date('Y-m-d', strtotime('-30 days'));
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $to = date('Y-m-d');
+        }
 
         $data = $this->getReportData($from, $to);
 
@@ -97,12 +125,23 @@ class StatsController extends BaseController
      */
     public function exportDocx()
     {
+        if (!isset($_SESSION['admin_id'])) {
+            $this->redirect('/login?error=' . urlencode('Доступ запрещён. Пожалуйста, войдите в систему.'));
+        }
+
         if (($_SESSION['role'] ?? 0) !== 1) {
-            $this->redirect('/booking');
+            $this->redirect('/booking?error=' . urlencode('Недостаточно прав для просмотра статистики.'));
         }
 
         $from = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
         $to   = $_GET['to']   ?? date('Y-m-d');
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $from = date('Y-m-d', strtotime('-30 days'));
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $to = date('Y-m-d');
+        }
 
         $data = $this->getReportData($from, $to);
 
@@ -160,7 +199,8 @@ class StatsController extends BaseController
      */
     private function getReportData($from, $to)
     {
-        $bookingsData = Booking::getAll($this->pdo, $from, $to);
+        $sessionDormId = !empty($_SESSION['dormitory_id']) ? (int)$_SESSION['dormitory_id'] : null;
+        $bookingsData = Booking::getAll($this->pdo, $from, $to, '', $sessionDormId);
 
         $totalBookings = count($bookingsData);
         $cancelledCount = 0;

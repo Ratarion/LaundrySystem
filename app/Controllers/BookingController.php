@@ -2,6 +2,9 @@
 namespace App\Controllers;
 
 use Models\Booking;
+use Models\Dormitory;
+use Models\Machine;
+use App\Services\BotNotifier;
 
 class BookingController extends BaseController
 {
@@ -10,22 +13,79 @@ class BookingController extends BaseController
         $this->log->info('Открыта главная страница', ['ip' => $_SERVER['REMOTE_ADDR']]);
 
         $role = $_SESSION['role'] ?? 0;
-        $isLoggedIn   = isset($_SESSION['admin_id']);
-        $isAdmin      = $role === 1;
-        $isTechnician = $role === 2;
-        $roleName     = $role === 1 ? 'Администратор' : ($role === 2 ? 'Техник' : 'Житель');
+        $isLoggedIn    = isset($_SESSION['admin_id']);
+        $isAdmin       = $role === 1;
+        $isTechnician  = $role === 2;
+        $sessionDormId = !empty($_SESSION['dormitory_id']) ? (int)$_SESSION['dormitory_id'] : null;
+        $roleName      = getUserRoleTitle($role, $sessionDormId, $_SESSION['dormitory_name'] ?? null);
 
         $successMessage = $_GET['success'] ?? '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
             if (isset($_POST['mass_cancel'])) {
-                $date = $_POST['cancel_date'];
-                $type = $_POST['type_machine'];
-                $result = Booking::massCancel($this->pdo, $date, $type);
+                $date        = trim($_POST['cancel_date'] ?? '');
+                $type        = trim($_POST['type_machine'] ?? '');
+
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    $this->redirect('/booking?error=' . urlencode('Некорректный формат даты для отмены!'));
+                }
+                if (!in_array($type, ['Стиральная', 'Сушильная'], true)) {
+                    $type = 'Стиральная';
+                }
+
+                // Если пользователь привязан к общежитию, он может отменять только своё общежитие!
+                $massDormId  = $sessionDormId !== null ? $sessionDormId : (!empty($_POST['cancel_dormitory_id']) ? (int)$_POST['cancel_dormitory_id'] : null);
+                $reason      = trim(strip_tags($_POST['cancel_reason'] ?? ''));
+                if (empty($reason)) {
+                    $reason = 'Технические работы в прачечной';
+                }
+                
+                // Получаем список затронутых бронирований до физической отмены
+                $affectedBookings = Booking::getAffectedByMassCancel($this->pdo, $date, $type, $massDormId);
+                
+                $result = Booking::massCancel($this->pdo, $date, $type, $massDormId);
 
                 if ($result) {
-                    $this->log->info('Массовая отмена', ['date' => $date, 'type' => $type, 'role' => $roleName]);
-                    $this->redirect('/booking?success=Массовая отмена выполнена!');
+                    $this->log->info('Массовая отмена', ['date' => $date, 'type' => $type, 'dormitory_id' => $massDormId, 'role' => $roleName, 'reason' => $reason]);
+                    
+                    // Уведомляем пользователей через Telegram, VK и MAX
+                    $botNotifier = new BotNotifier();
+                    $notifiedCount = 0;
+                    foreach ($affectedBookings as $b) {
+                        $timeStr = date('d.m.Y H:i', strtotime($b['start_time']));
+                        $typeStr = mb_strtolower($b['type_machine'] ?? $type);
+                        $numStr  = $b['number_machine'] ?? '';
+                        $dormStr = !empty($b['dormitory_name']) ? " ({$b['dormitory_name']})" : '';
+                        $name    = !empty($b['first_name']) ? "Здравствуйте, {$b['first_name']}!" : "Здравствуйте!";
+                        
+                        $msg     = "⚠️ <b>Внимание: отмена бронирования</b>\n\n"
+                                 . "{$name}\n"
+                                 . "Ваша запись на <b>{$typeStr} машину №{$numStr}</b>{$dormStr} на <b>{$timeStr}</b> была отменена администратором.\n\n"
+                                 . "💬 <b>Причина отмены:</b> " . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+                        
+                        $res = $botNotifier->notifyResident($b, $msg);
+                        if (!empty($res['tg']) || !empty($res['vk']) || !empty($res['max'])) {
+                            $notifiedCount++;
+                        }
+
+                        // Сохраняем уведомление в БД
+                        try {
+                            if (!empty($b['inidresidents'])) {
+                                $stmtN = $this->pdo->prepare("INSERT INTO notifications (id_residents, id_machines, description) VALUES (?, ?, ?)");
+                                $stmtN->execute([
+                                    $b['inidresidents'],
+                                    $b['inidmachine'] ?? null,
+                                    "Массовая отмена ({$timeStr}, {$typeStr} #{$numStr}): {$reason}"
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            $this->log->error("Ошибка сохранения уведомления: " . $e->getMessage());
+                        }
+                    }
+
+                    $totalCount = count($affectedBookings);
+                    $msgText = "Массовая отмена выполнена! Отменено записей: {$totalCount}. Уведомления разосланы жильцам в боты.";
+                    $this->redirect('/booking?success=' . urlencode($msgText));
                 } else {
                     $this->log->error('Ошибка массовой отмены');
                     die('Ошибка при массовой отмене.');
@@ -34,30 +94,118 @@ class BookingController extends BaseController
 
             if ($isAdmin && isset($_POST['cancel_id'])) {
                 $id = (int)$_POST['cancel_id'];
+                $reason = trim($_POST['cancel_reason'] ?? '');
+                if (empty($reason)) {
+                    $reason = 'По решению администратора';
+                }
+                
+                $booking = new Booking($this->pdo);
+                $isLoaded = $booking->load($id);
+
+                if ($isLoaded && $sessionDormId !== null && (int)$booking->dormitory_id !== $sessionDormId) {
+                    $this->log->warning('Попытка отмены чужого бронирования', ['booking_id' => $id, 'user_dorm' => $sessionDormId]);
+                    $this->redirect('/booking?error=' . urlencode('Вы можете отменять бронирования только своего общежития!'));
+                }
+                
                 $result = Booking::cancelOne($this->pdo, $id);
 
                 if ($result) {
-                    $this->log->info('Отменена запись', ['booking_id' => $id, 'role' => $roleName]);
-                    $this->redirect('/booking?success=Запись отменена');
+                    $this->log->info('Отменена запись', ['booking_id' => $id, 'role' => $roleName, 'reason' => $reason]);
+                    
+                    if ($isLoaded) {
+                        $botNotifier = new BotNotifier();
+                        $timeStr = date('d.m.Y H:i', strtotime($booking->start_time));
+                        $typeStr = mb_strtolower($booking->type_machine ?? 'стиральной');
+                        $numStr  = $booking->number_machine ?? '';
+                        $dormStr = !empty($booking->dormitory_name) ? " ({$booking->dormitory_name})" : '';
+                        $name    = !empty($booking->resident_name) ? "Здравствуйте, {$booking->resident_name}!" : "Здравствуйте!";
+                        
+                        $msg     = "⚠️ <b>Внимание: отмена бронирования</b>\n\n"
+                                 . "{$name}\n"
+                                 . "Ваше бронирование (<b>{$typeStr} машина №{$numStr}</b>{$dormStr} на <b>{$timeStr}</b>) было отменено администратором.\n\n"
+                                 . "💬 <b>Причина отмены:</b> " . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
+                        
+                        $notifyResult = $botNotifier->notifyResident([
+                            'tg_id'  => $booking->tg_id,
+                            'vk_id'  => $booking->vk_id,
+                            'max_id' => $booking->max_id,
+                        ], $msg);
+
+                        // Сохраняем уведомление в БД
+                        try {
+                            if (!empty($booking->inidresidents)) {
+                                $stmtN = $this->pdo->prepare("INSERT INTO notifications (id_residents, id_machines, description) VALUES (?, ?, ?)");
+                                $stmtN->execute([
+                                    $booking->inidresidents,
+                                    $booking->inidmachine ?? null,
+                                    "Отмена бронирования ({$timeStr}): {$reason}"
+                                ]);
+                            }
+                        } catch (\Exception $e) {
+                            $this->log->error("Ошибка сохранения уведомления: " . $e->getMessage());
+                        }
+
+                        $this->log->info('Результат отправки бот-уведомления', ['booking_id' => $id, 'results' => $notifyResult]);
+                    }
+
+                    $this->redirect('/booking?success=' . urlencode('Запись отменена. Уведомление с причиной отправлено жителю.'));
+                } else {
+                    $this->log->error('Ошибка при одиночной отмене (Booking::cancelOne вернул false)', ['booking_id' => $id]);
                 }
             }
         }
 
-        $date_from = $_POST['date_from'] ?? date('Y-m-d');
-        $date_to   = $_POST['date_to']   ?? date('Y-m-d');
-        $status    = $_POST['status']    ?? '';
+        // Фильтры: если пользователь привязан к общежитию — принудительно фиксируем его общежитие!
+        if ($sessionDormId !== null) {
+            $dormitory_id = $sessionDormId;
+        } else {
+            $dormitory_id = !empty($_REQUEST['dormitory_id']) ? (int)$_REQUEST['dormitory_id'] : '';
+        }
 
-        $bookings = Booking::getAll($this->pdo, $date_from, $date_to, $status);
+        $machine_id = !empty($_REQUEST['machine_id']) ? (int)$_REQUEST['machine_id'] : '';
+        $validStatuses = ['Ожидание', 'Ожидание подтверждения', 'Подтверждено', 'Отменено'];
+        $status = in_array($_REQUEST['status'] ?? '', $validStatuses, true) ? $_REQUEST['status'] : '';
+
+        // Выбранная дата: одиночная или диапазон
+        $single_date = trim($_REQUEST['date'] ?? '');
+        if (!empty($single_date) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $single_date)) {
+            $single_date = '';
+        }
+
+        if (!empty($single_date)) {
+            $date_from = $single_date;
+            $date_to   = $single_date;
+        } else {
+            $date_from = trim($_REQUEST['date_from'] ?? '');
+            $date_to   = trim($_REQUEST['date_to'] ?? '');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_from)) {
+                $date_from = date('Y-m-d');
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
+                $date_to = date('Y-m-d', strtotime('+6 days'));
+            }
+        }
+
+        $bookings    = Booking::getAll($this->pdo, $date_from, $date_to, $status, $dormitory_id, $machine_id);
+        $dormitories = Dormitory::getAll($this->pdo);
+        $machines    = Machine::getAll($this->pdo, $dormitory_id ?: null);
 
         $this->render('booking', [
-            'bookings'     => $bookings,
-            'isLoggedIn'   => $isLoggedIn,
-            'isAdmin'      => $isAdmin,
-            'roleName'     => $roleName,
-            'date_from'    => $date_from,
-            'date_to'      => $date_to,
-            'status'       => $status,
-            'success'      => $successMessage
+            'bookings'      => $bookings,
+            'dormitories'   => $dormitories,
+            'dormitory_id'  => $dormitory_id,
+            'sessionDormId' => $sessionDormId,
+            'machines'      => $machines,
+            'machine_id'    => $machine_id,
+            'isLoggedIn'    => $isLoggedIn,
+            'isAdmin'       => $isAdmin,
+            'roleName'      => $roleName,
+            'single_date'   => $single_date,
+            'date_from'     => $date_from,
+            'date_to'       => $date_to,
+            'status'        => $status,
+            'success'       => $successMessage,
+            'error'         => $_GET['error'] ?? ''
         ], $isLoggedIn);
     }
 }

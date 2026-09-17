@@ -1,31 +1,29 @@
 <?php
-// Подключаем логгер (теперь в той же папке config/)
+// Подключаем Composer autoload и определяем корень проекта
+$root = dirname(__DIR__);
 require_once $root . '/config/logger.php';
 
-
-// Подключаем Composer autoload
-$root = dirname(__DIR__);
-require_once $root . '/vendor/autoload.php';
+if (file_exists($root . '/vendor/autoload.php')) {
+    require_once $root . '/vendor/autoload.php';
+}
 
 use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable($root);
-$dotenv->load();
-
-// Переменные из .env
-$host     = $_ENV['DB_HOST'];
-$port     = $_ENV['DB_PORT'];
-$dbname   = $_ENV['DB_NAME'];
-$user     = $_ENV['DB_USER'];
-$password = $_ENV['DB_PASS']; 
-
-if (empty($password)) {
-    $log->critical('В .env нет DB_PASS!');
-    die('Ошибка: не указан пароль БД в .env');
+if (class_exists(Dotenv::class) && file_exists($root . '/.env')) {
+    $dotenv = Dotenv::createImmutable($root);
+    $dotenv->safeLoad();
 }
 
-// DSN для Supabase (PostgreSQL)
-$dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require";
+// Переменные из .env или переменных окружения сервера
+$host     = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
+$port     = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? '5432';
+$dbname   = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'layndaru_db';
+$user     = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'postgres';
+$password = $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?? 'postgres'; 
+$sslmode  = $_ENV['DB_SSLMODE'] ?? getenv('DB_SSLMODE') ?? 'disable';
+
+// DSN для PostgreSQL с настраиваемым sslmode и таймаутом подключения
+$dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=$sslmode;connect_timeout=5";
 
 try {
     $pdo = new PDO($dsn, $user, $password, [
@@ -37,7 +35,7 @@ try {
 
     $GLOBALS['pdo'] = $pdo;
 
-    $log->info('✅ Подключение к Supabase успешно', [
+    $log->info('✅ Подключение к PostgreSQL успешно', [
         'dbname' => $dbname,
         'host'   => $host
     ]);
@@ -45,10 +43,15 @@ try {
     return $pdo;
 
 } catch (PDOException $e) {
-    $log->error('❌ Ошибка подключения к Supabase', [
+    $log->error('❌ Ошибка подключения к PostgreSQL', [
         'message' => $e->getMessage(),
         'code'    => $e->getCode()
     ]);
     
-    die('Ошибка подключения к базе. Смотри logs/error.log');
+    // Возвращаем HTTP 503 Service Unavailable и понятный текст вместо зависания
+    http_response_code(503);
+    die('<h3>⚠️ Ошибка подключения к базе данных</h3>
+         <p>Сервер базы данных PostgreSQL не отвечает. Убедитесь, что контейнер с базой данных запущен (<code>docker compose up -d postgres</code>).</p>
+         <p>Пожалуйста, <b>обновите страницу</b> через несколько секунд.</p>
+         <p><small>Подробности записаны в logs/error.log</small></p>');
 }

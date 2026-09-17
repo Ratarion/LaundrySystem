@@ -29,15 +29,21 @@ class AuthController extends BaseController
             $user = Administrator::findByUsername($this->pdo, $username);
 
             if ($user && password_verify($password, $user->password_hash)) {
-                $_SESSION['admin_id'] = $user->id;
-                $_SESSION['username'] = $user->username;
-                $_SESSION['role']     = $user->role;
+                // Защита от Session Fixation
+                session_regenerate_id(true);
+
+                $_SESSION['admin_id']       = $user->id;
+                $_SESSION['username']       = $user->username;
+                $_SESSION['role']           = $user->role;
+                $_SESSION['dormitory_id']   = $user->dormitory_id;
+                $_SESSION['dormitory_name'] = $user->dormitory_name;
 
                 $this->log->info('✅ Успешный вход', [
-                    'admin_id' => $user->id,
-                    'username' => $user->username,
-                    'role'     => $user->role,
-                    'ip'       => $_SERVER['REMOTE_ADDR']
+                    'admin_id'     => $user->id,
+                    'username'     => $user->username,
+                    'role'         => $user->role,
+                    'dormitory_id' => $user->dormitory_id,
+                    'ip'           => $_SERVER['REMOTE_ADDR']
                 ]);
 
                 $this->redirect('/booking');
@@ -72,5 +78,34 @@ class AuthController extends BaseController
         }
 
         $this->redirect('/booking');
+    }
+
+    public function changePassword()
+    {
+        // Проверка авторизации
+        if (!isset($_SESSION['admin_id'])) {
+            $this->redirect('/login?error=' . urlencode('Доступ запрещён. Пожалуйста, войдите в систему.'));
+        }
+
+        $message = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $newPass = $_POST['new_password'] ?? '';
+            
+            if (strlen($newPass) < 4) {
+                $message = "Пароль слишком короткий";
+            } else {
+                $admin = new Administrator($this->pdo);
+                if ($admin->load($_SESSION['admin_id'])) {
+                    $admin->setPassword($newPass); // Хешируем
+                    if ($admin->save()) {
+                        $message = "Пароль успешно обновлен!";
+                        $this->log->info("Админ {$_SESSION['username']} сменил пароль");
+                    }
+                }
+            }
+        }
+
+        $this->render('change_password', ['message' => $message]);
     }
 }
