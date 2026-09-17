@@ -51,7 +51,9 @@ async def process_cancel_booking(event: MessageEvent):
         await start_cancel_process(event)
         return
 
+    dorm_id = getattr(booking, "dormitory_id", None) or (booking.machine.dormitory_id if getattr(booking, "machine", None) else None) or 1
     booking_data = {
+        "dormitory_id": dorm_id,
         "date_str": booking.start_time.strftime("%d.%m"),
         "start_time_str": booking.start_time.strftime("%H:%M"),
         "end_time_str": booking.end_time.strftime("%H:%M"),

@@ -11,6 +11,7 @@ class Machine(Base):
     __tablename__ = "machines"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    dormitory_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     type_machine: Mapped[str] = mapped_column(String, nullable=False)
     number_machine: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[int] = mapped_column(SmallInteger, default=MACHINE_STATUS_ACTIVE, nullable=False)

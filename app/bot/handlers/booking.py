@@ -42,9 +42,9 @@ def _header_text(t: dict, machine_type_db: str) -> str:
 
 
 async def _render_calendar(event: MessageEvent, peer_id: int, lang: str, t: dict, machine_type_db: str,
-                            max_capacity: int, offset: int = 0):
+                            max_capacity: int, offset: int = 0, dormitory_id: int = 1):
     start, end = get_range_bounds(offset)
-    workload = await get_range_workload(start, end, machine_type_db)
+    workload = await get_range_workload(start, end, machine_type_db, dormitory_id=dormitory_id)
     header_text = _header_text(t, machine_type_db)
     kb = build_date_picker_keyboard(workload, max_capacity, lang, offset=offset)
     await event.edit_message(header_text, keyboard=kb)
@@ -59,9 +59,10 @@ async def process_record_start(event: MessageEvent):
         await event.show_snackbar(t["none_user"])
         return
 
-    await update_state_data(peer_id, user_id=user.id)
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+    await update_state_data(peer_id, user_id=user.id, dormitory_id=dormitory_id)
 
-    max_capacity = await get_total_daily_capacity_by_type()
+    max_capacity = await get_total_daily_capacity_by_type(dormitory_id=dormitory_id)
     if max_capacity == 0:
         await event.show_snackbar(t["no_active_machines"])
         await event.edit_message(t["section_menu_title"], keyboard=get_section_keyboard(lang))
@@ -81,6 +82,8 @@ async def process_machine_type(event: MessageEvent):
         return
 
     lang, t = await get_lang_and_texts(peer_id)
+    data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
     machine_type_callback = event.payload.get("type")  # "WASH" или "DRY"
 
     if machine_type_callback == "WASH":
@@ -90,11 +93,11 @@ async def process_machine_type(event: MessageEvent):
 
     await update_state_data(peer_id, machine_type=machine_type_db)
 
-    max_capacity = await get_total_daily_capacity_by_type(machine_type_db)
+    max_capacity = await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
     await update_state_data(peer_id, max_capacity=max_capacity)
 
     await set_state(peer_id, AddRecord.waiting_for_day)
-    await _render_calendar(event, peer_id, lang, t, machine_type_db, max_capacity, offset=0)
+    await _render_calendar(event, peer_id, lang, t, machine_type_db, max_capacity, offset=0, dormitory_id=dormitory_id)
 
 
 @booking_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "day_page"}))
@@ -106,11 +109,12 @@ async def process_calendar_page(event: MessageEvent):
 
     lang, t = await get_lang_and_texts(peer_id)
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
     machine_type_db = data.get("machine_type")
     max_capacity = data.get("max_capacity", 0)
     offset = int(event.payload.get("offset", 0))
 
-    await _render_calendar(event, peer_id, lang, t, machine_type_db, max_capacity, offset=offset)
+    await _render_calendar(event, peer_id, lang, t, machine_type_db, max_capacity, offset=offset, dormitory_id=dormitory_id)
 
 
 @booking_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "day"}))
@@ -122,6 +126,7 @@ async def process_day_picked(event: MessageEvent):
 
     lang, t = await get_lang_and_texts(peer_id)
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
     max_capacity = data.get("max_capacity", 0)
     machine_type_db = data.get("machine_type")
 
@@ -135,7 +140,7 @@ async def process_day_picked(event: MessageEvent):
 
     day_start = datetime(date.year, date.month, date.day)
     day_end = day_start + timedelta(days=1)
-    workload = await get_range_workload(day_start, day_end, machine_type_db)
+    workload = await get_range_workload(day_start, day_end, machine_type_db, dormitory_id=dormitory_id)
     used = workload.get(date.date(), 0)
     free = max_capacity - used if max_capacity > 0 else 0
     if free <= 0:
@@ -148,7 +153,7 @@ async def process_day_picked(event: MessageEvent):
         return
 
     await update_state_data(peer_id, chosen_date=date.date().isoformat())
-    slots = await get_available_slots(date, machine_type=machine_type_db)
+    slots = await get_available_slots(date, machine_type=machine_type_db, dormitory_id=dormitory_id)
     if not slots:
         await event.show_snackbar(t["no_slots_available"])
         return
@@ -169,6 +174,7 @@ async def process_time_slot(event: MessageEvent):
 
     lang, t = await get_lang_and_texts(peer_id)
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
 
     chosen_dt = datetime.fromisoformat(event.payload["start"])
     end_dt = chosen_dt + timedelta(minutes=DURATION_MINUTES)
@@ -176,7 +182,7 @@ async def process_time_slot(event: MessageEvent):
     await update_state_data(peer_id, start_time=chosen_dt.isoformat())
 
     machine_type_db = data.get("machine_type")
-    available_machines = await get_available_machines(chosen_dt, machine_type_db)
+    available_machines = await get_available_machines(chosen_dt, machine_type_db, dormitory_id=dormitory_id)
 
     if not available_machines:
         await event.show_snackbar(t["no_available_slots_alert"])
@@ -202,6 +208,7 @@ async def process_time_page(event: MessageEvent):
 
     lang, t = await get_lang_and_texts(peer_id)
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
     chosen_date_str = data.get("chosen_date")
     machine_type_db = data.get("machine_type")
     if not chosen_date_str:
@@ -209,7 +216,7 @@ async def process_time_page(event: MessageEvent):
         return
 
     chosen_date = parse_picked_date(chosen_date_str)
-    slots = await get_available_slots(chosen_date, machine_type=machine_type_db)
+    slots = await get_available_slots(chosen_date, machine_type=machine_type_db, dormitory_id=dormitory_id)
     offset = int(event.payload.get("offset", 0))
 
     await event.edit_message(
@@ -228,6 +235,7 @@ async def process_machine(event: MessageEvent):
     lang, t = await get_lang_and_texts(peer_id)
     machine_id = int(event.payload["id"])
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
 
     start_time = datetime.fromisoformat(data["start_time"])
     end_time = start_time + timedelta(minutes=DURATION_MINUTES)
@@ -238,14 +246,18 @@ async def process_machine(event: MessageEvent):
         return
 
     try:
-        result = await create_booking(user_id=user_id, machine_id=machine_id, start_time=start_time)
+        result = await create_booking(user_id=user_id, machine_id=machine_id, start_time=start_time, dormitory_id=dormitory_id)
+
+        msg = t["booking_success"].format(
+            machine_num=result["machine"].number_machine,
+            start=start_time.strftime("%d.%m.%Y %H:%M"),
+            end=end_time.strftime("%H:%M"),
+        )
+        if getattr(result.get("booking"), "dormitory_id", None):
+            msg += f"\n🏢 Общежитие №{result['booking'].dormitory_id}"
 
         await event.edit_message(
-            t["booking_success"].format(
-                machine_num=result["machine"].number_machine,
-                start=start_time.strftime("%d.%m.%Y %H:%M"),
-                end=end_time.strftime("%H:%M"),
-            ),
+            msg,
             keyboard=get_exit_keyboard(lang),
         )
         await clear_state(peer_id)
@@ -285,13 +297,14 @@ async def process_back_to_sections(event: MessageEvent):
 async def _back_to_time(event: MessageEvent, peer_id: int):
     lang, t = await get_lang_and_texts(peer_id)
     data = await get_state_data(peer_id)
+    dormitory_id = data.get("dormitory_id", 1)
     chosen_date_str = data.get("chosen_date")
     if not chosen_date_str:
         await event.show_snackbar("Дата не найдена")
         return
     chosen_date = parse_picked_date(chosen_date_str)
     machine_type_db = data.get("machine_type")
-    slots = await get_available_slots(chosen_date, machine_type=machine_type_db)
+    slots = await get_available_slots(chosen_date, machine_type=machine_type_db, dormitory_id=dormitory_id)
     await event.edit_message(
         t["select_time_prompt"].replace("{date}", chosen_date.strftime("%d.%m")),
         keyboard=get_time_slots_keyboard(chosen_date, slots, lang),

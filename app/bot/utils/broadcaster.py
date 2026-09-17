@@ -11,17 +11,18 @@ from app.bot.keyboards import get_exit_keyboard
 
 
 async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_vk_id: int = None):
-    users = await get_all_users_with_vk()
+    dorm_id = booking_data.get("dormitory_id")
+    users = await get_all_users_with_vk(dormitory_id=dorm_id)
     count = 0
 
     for u in users:
-        vk_id = getattr(u, "vk_id", None)
+        vk_id = getattr(u, "vk_id", None) or (u[0] if isinstance(u, (tuple, list)) else None)
         if not vk_id:
             continue
         if exclude_vk_id is not None and vk_id == exclude_vk_id:
             continue
 
-        lang = getattr(u, "language", "RU") or "RU"
+        lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
         t = ALL_TEXTS.get(lang) or ALL_TEXTS.get("RU")
 
         raw_type = booking_data.get("machine_type", "")

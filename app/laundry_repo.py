@@ -87,9 +87,12 @@ async def update_user_language(vk_id: int, new_language: str):
 # РАБОТА С МАШИНАМИ И БРОНЯМИ
 # ==========================================
 
-async def get_all_machines() -> List[Machine]:
+async def get_all_machines(dormitory_id: Optional[int] = None) -> List[Machine]:
     async with async_session() as session:
-        result = await session.execute(select(Machine).order_by(Machine.number_machine))
+        query = select(Machine)
+        if dormitory_id:
+            query = query.where(Machine.dormitory_id == dormitory_id)
+        result = await session.execute(query.order_by(Machine.number_machine))
         return result.scalars().all()
 
 async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 90) -> bool:
@@ -108,27 +111,27 @@ async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 
         )
         return result.scalar_one_or_none() is None
 
-async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90) -> dict:
+async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90, dormitory_id: Optional[int] = None) -> dict:
     end_time = start_time + timedelta(minutes=duration_minutes)
 
-    # Проверка слота (как раньше)
     if not await is_slot_free(machine_id, start_time, duration_minutes):
-        raise ValueError("Слот уже занят")  # Или "Slot is already taken" для consistency
+        raise ValueError("Слот уже занят")
 
     async with async_session() as session:
-        # НОВАЯ ЧАСТЬ: Получаем тип машины
-        machine_query = select(Machine.type_machine).where(Machine.id == machine_id)
+        machine_query = select(Machine).where(Machine.id == machine_id)
         result = await session.execute(machine_query)
-        machine_type = result.scalar_one_or_none()
-        if not machine_type:
+        machine = result.scalar_one_or_none()
+        if not machine:
             raise ValueError("Machine not found")
 
-        # Проверка недельного лимита с типом
+        machine_type = machine.type_machine
+        dorm_id = dormitory_id or getattr(machine, "dormitory_id", 1) or 1
+
         if await has_weekly_booking(user_id, start_time, machine_type):
             raise ValueError("Weekly limit reached")
 
-    async with async_session() as session:
         booking = Booking(
+            dormitory_id=dorm_id,
             inidresidents=user_id,
             inidmachine=machine_id,
             start_time=start_time,
@@ -138,9 +141,6 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
         session.add(booking)
         await session.commit()
         await session.refresh(booking)
-
-        machine_result = await session.execute(select(Machine).where(Machine.id == machine_id))
-        machine = machine_result.scalar_one()
 
         return {'booking': booking, 'machine': machine}
 
@@ -192,22 +192,22 @@ async def cancel_booking(booking_id: int, user_vk_id: int = None) -> bool:
         await session.commit()
         return True
 
-async def get_all_users_with_vk() -> List[tuple[int, str]]:
+async def get_all_users_with_vk(dormitory_id: Optional[int] = None) -> List[tuple[int, str]]:
     """
     Возвращает список кортежей (vk_id, language) всех пользователей, привязанных к VK.
     """
     async with async_session() as session:
-        # Запрашиваем и ID, и язык
         query = select(User.vk_id, User.language).where(User.vk_id.is_not(None))
+        if dormitory_id:
+            query = query.where(User.dormitory_id == dormitory_id)
         result = await session.execute(query)
-        # Возвращаем список кортежей, например: [(123, 'RU'), (456, 'CN')]
         return result.all()
 
 # ==========================================
 # ОПТИМИЗИРОВАННАЯ ЛОГИКА КАЛЕНДАРЯ
 # ==========================================
 
-async def get_month_workload(year: int, month: int, machine_type: Optional[str] = None) -> dict:
+async def get_month_workload(year: int, month: int, machine_type: Optional[str] = None, dormitory_id: Optional[int] = None) -> dict:
     """Один быстрый запрос для получения загруженности (по дню месяца)."""
     async with async_session() as session:
         query = (
@@ -224,18 +224,14 @@ async def get_month_workload(year: int, month: int, machine_type: Optional[str] 
         )
         if machine_type:
             query = query.where(Machine.type_machine == machine_type)
+        if dormitory_id:
+            query = query.where(Booking.dormitory_id == dormitory_id)
 
         query = query.group_by('day')
         result = await session.execute(query)
         return {row.day: row.count for row in result.all()}
 
-async def get_range_workload(start_date: datetime, end_date: datetime, machine_type: Optional[str] = None) -> dict:
-    """
-    Загруженность (кол-во броней) по каждому календарному дню в произвольном
-    диапазоне дат (может охватывать несколько месяцев). Используется VK-версией
-    календаря, показывающей список ближайших дней, а не помесячную сетку.
-    Возвращает {date(...): count}.
-    """
+async def get_range_workload(start_date: datetime, end_date: datetime, machine_type: Optional[str] = None, dormitory_id: Optional[int] = None) -> dict:
     async with async_session() as session:
         query = (
             select(
@@ -251,12 +247,14 @@ async def get_range_workload(start_date: datetime, end_date: datetime, machine_t
         )
         if machine_type:
             query = query.where(Machine.type_machine == machine_type)
+        if dormitory_id:
+            query = query.where(Booking.dormitory_id == dormitory_id)
 
         query = query.group_by('day')
         result = await session.execute(query)
         return {row.day: row.count for row in result.all()}
 
-async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None) -> int:
+async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None, dormitory_id: Optional[int] = None) -> int:
     """
     Возвращает ОБЩЕЕ КОЛИЧЕСТВО СЛОТОВ в день (Кол-во машин * Кол-во слотов).
     """
@@ -264,12 +262,12 @@ async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None) -
         conditions = [Machine.status == MACHINE_STATUS_ACTIVE]
         if machine_type:
             conditions.append(Machine.type_machine == machine_type)
+        if dormitory_id:
+            conditions.append(Machine.dormitory_id == dormitory_id)
 
         query = select(func.count(Machine.id)).where(and_(*conditions))
         active_machines = (await session.execute(query)).scalar() or 0
 
-    # Считаем слоты: с 8:00 до 23:00 = 15 часов = 900 минут.
-    # 900 / 90 минут = 10 слотов на одну машину.
     slots_per_machine = 10
     total_slots = active_machines * slots_per_machine
 
@@ -279,13 +277,12 @@ async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None) -
 # ОПТИМИЗИРОВАННЫЙ ПОИСК СЛОТОВ
 # ==========================================
 
-async def get_available_machines(start_time: datetime, machine_type: str) -> List[Machine]:
+async def get_available_machines(start_time: datetime, machine_type: str, dormitory_id: Optional[int] = None) -> List[Machine]:
     """1 запрос вместо 10. Ищем занятые и исключаем их."""
     duration_minutes = 90
     end_time = start_time + timedelta(minutes=duration_minutes)
 
     async with async_session() as session:
-        # 1. Находим ID машин, которые ЗАНЯТЫ в это время
         busy_subquery = select(Booking.inidmachine).where(
             Booking.status != 'Отменено',
             or_(
@@ -295,12 +292,15 @@ async def get_available_machines(start_time: datetime, machine_type: str) -> Lis
             )
         )
 
-        # 2. Выбираем машины нужного типа, которых НЕТ в списке занятых
-        query = select(Machine).where(
+        conditions = [
             Machine.status == MACHINE_STATUS_ACTIVE,
             Machine.type_machine == machine_type,
             Machine.id.not_in(busy_subquery)
-        )
+        ]
+        if dormitory_id:
+            conditions.append(Machine.dormitory_id == dormitory_id)
+
+        query = select(Machine).where(and_(*conditions))
 
         result = await session.execute(query)
         return result.scalars().all()
@@ -308,26 +308,21 @@ async def get_available_machines(start_time: datetime, machine_type: str) -> Lis
 async def get_available_slots(
     date: datetime,
     machine_type: Optional[str] = None,
+    dormitory_id: Optional[int] = None,
     work_start: int = 8,
     work_end: int = 23,
     slot_duration: int = 90
 ) -> List[datetime]:
-    """
-    Оптимизированный поиск слотов:
-    1. Берем все брони на день одним запросом.
-    2. Считаем доступность в памяти.
-    """
-    # Границы рабочего дня
     start_of_day = date.replace(hour=work_start, minute=0, second=0, microsecond=0)
     end_of_day = date.replace(hour=work_end, minute=0, second=0, microsecond=0)
 
     async with async_session() as session:
-        # 1. Получаем кол-во активных машин этого типа
         conditions = [Machine.status == MACHINE_STATUS_ACTIVE]
         if machine_type:
             conditions.append(Machine.type_machine == machine_type)
+        if dormitory_id:
+            conditions.append(Machine.dormitory_id == dormitory_id)
 
-        # Получаем ID активных машин
         machines_query = select(Machine.id).where(and_(*conditions))
         active_machine_ids = (await session.execute(machines_query)).scalars().all()
 
@@ -335,17 +330,15 @@ async def get_available_slots(
         if total_machines == 0:
             return []
 
-        # 2. Получаем ВСЕ брони на этот день для этих машин
         bookings_query = select(Booking).where(
             Booking.start_time >= start_of_day,
-            Booking.start_time < end_of_day, # Начало брони должно быть внутри рабочего дня
+            Booking.start_time < end_of_day,
             Booking.status != 'Отменено',
             Booking.inidmachine.in_(active_machine_ids)
         )
         bookings_result = await session.execute(bookings_query)
         bookings = bookings_result.scalars().all()
 
-    # 3. Алгоритм в памяти (быстрый)
     available_slots = []
     current_slot = start_of_day
 
