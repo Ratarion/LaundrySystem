@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: layndaru-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-layndaru_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+    ports:
+      # Порт 5432 открыт для подключения зарубежного Telegram-бота
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d layndaru_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  webpanel:
+    build: ./webpanel.local
+    container_name: layndaru-webpanel
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./webpanel.local:/var/www/html
+    environment:
+      - APACHE_RUN_USER=www-data
+      - APACHE_RUN_GROUP=www-data
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-layndaru_db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASS=${DB_PASS:-postgres}
+      - DB_SSLMODE=disable
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-YOUR_TG_BOT_TOKEN}
+      - VK_TOKEN=${VK_TOKEN:-YOUR_VK_TOKEN}
+      - VK_GROUP_ID=${VK_GROUP_ID:-236004082}
+      - MAX_TOKEN=${MAX_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  maxbot:
+    build: ./maxbot
+    container_name: layndaru-maxbot
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
+      - MAX_TOKEN=${MAX_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  vkbot:
+    build: ./vkbot
+    container_name: layndaru-vkbot
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
+      - VK_TOKEN=${VK_TOKEN:-YOUR_VK_TOKEN}
+      - VK_GROUP_ID=${VK_GROUP_ID:-236004082}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: layndaru-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-layndaru.duckdns.org}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - webpanel
+
+volumes:
+  pgdata:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local

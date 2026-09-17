@@ -1,0 +1,44 @@
+import asyncio
+import logging
+import sys
+
+from app.bot.loader import bot
+from app.bot.handlers.auth import auth_router
+from app.bot.handlers.booking import booking_router
+from app.bot.handlers.records import records_router
+from app.bot.handlers.cancel_record import cancel_record_router
+from app.bot.handlers.confirmation import confirm_router
+from app.bot.handlers.report import report_router
+from app.bot.utils.scheduler import start_scheduler
+from app.db.base import init_db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
+
+async def main():
+    await init_db()
+    logging.info("[MaxBot] База данных подключена успешно")
+
+    bot.add_router(auth_router)
+    bot.add_router(booking_router)
+    bot.add_router(records_router)
+    bot.add_router(cancel_record_router)
+    bot.add_router(confirm_router)
+    bot.add_router(report_router)
+
+    start_scheduler(bot)
+
+    logging.info("[MaxBot] Запуск polling Max Bot API (max.ru)...")
+    await bot.start_polling()
+
+
+if __name__ == '__main__':
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("[MaxBot] Бот остановлен пользователем")

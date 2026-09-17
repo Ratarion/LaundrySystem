@@ -1,0 +1,1 @@
+# maxbot db package
