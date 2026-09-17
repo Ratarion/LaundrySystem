@@ -58,7 +58,9 @@ async def process_cancel_booking(callback: CallbackQuery, state: FSMContext, bot
     
 
     # Сохраняем данные для рассылки
+    dorm_id = getattr(booking, "dormitory_id", None) or (booking.machine.dormitory_id if getattr(booking, "machine", None) else None) or 1
     booking_data = {
+        "dormitory_id": dorm_id,
         "date_str": booking.start_time.strftime("%d.%m"),
         "start_time_str": booking.start_time.strftime("%H:%M"),
         "end_time_str": booking.end_time.strftime("%H:%M"),
@@ -67,7 +69,7 @@ async def process_cancel_booking(callback: CallbackQuery, state: FSMContext, bot
     }
 
     # 2. Удаляем запись
-    success = await cancel_booking(booking_id)
+    success = await cancel_booking(booking_id, user_tg_id=callback.from_user.id)
     
     if success:
         await callback.answer(t["cancel_confirm_success"], show_alert=True)

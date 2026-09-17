@@ -29,7 +29,8 @@ from app.repositories.laundry_repo import (
     create_booking,
     get_month_workload,
     get_total_daily_capacity_by_type,
-    get_user_bookings
+    get_user_bookings,
+    has_weekly_booking
 )
 
 import logging
@@ -37,9 +38,9 @@ import logging
 booking_router = Router()
 
 # helper for colored calendar (можно использовать если нужно создать календарь отдельно)
-async def get_colored_calendar(year: int, month: int, locale: str, machine_type=None):
-    workload = await get_month_workload(year, month, machine_type)
-    max_slots = await get_total_daily_capacity_by_type(machine_type)
+async def get_colored_calendar(year: int, month: int, locale: str, machine_type=None, dormitory_id: int = 1):
+    workload = await get_month_workload(year, month, machine_type, dormitory_id=dormitory_id)
+    max_slots = await get_total_daily_capacity_by_type(machine_type, dormitory_id=dormitory_id)
     calendar = CustomLaundryCalendar(workload=workload, max_capacity=max_slots, locale=locale)
     return await calendar.start_calendar(year=year, month=month)
 
@@ -47,7 +48,15 @@ async def get_colored_calendar(year: int, month: int, locale: str, machine_type=
 @booking_router.callback_query(F.data == "record")
 async def process_record_start(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
-    max_capacity = await get_total_daily_capacity_by_type()
+    user = await get_user_by_tg_id(callback.from_user.id)
+    if not user:
+        await callback.answer(t["none_user"], show_alert=True)
+        return
+    
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+    await state.update_data(user_id=user.id, dormitory_id=dormitory_id)
+
+    max_capacity = await get_total_daily_capacity_by_type(dormitory_id=dormitory_id)
     if max_capacity == 0:
         await callback.answer(t["no_active_machines"], show_alert=True)
         await callback.message.edit_text(t["section_menu_title"], reply_markup=get_section_keyboard(lang))
@@ -65,6 +74,8 @@ async def process_record_start(callback: CallbackQuery, state: FSMContext):
 @booking_router.callback_query(F.data.startswith("type_"), AddRecord.waiting_for_machine_type)
 async def process_machine_type(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
+    data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
     machine_type_callback = callback.data.split("_")[1] # "WASH" или "DRY"
     
     # ПРИВЯЗЫВАЕМСЯ К ЗНАЧЕНИЯМ В БД (они у тебя на русском)
@@ -80,8 +91,8 @@ async def process_machine_type(callback: CallbackQuery, state: FSMContext):
     
     now = datetime.now()
     # Теперь эти функции получат правильный тип и вернут реальные цифры, а не 0
-    workload = await get_month_workload(now.year, now.month, machine_type_db)
-    max_capacity = await get_total_daily_capacity_by_type(machine_type_db)
+    workload = await get_month_workload(now.year, now.month, machine_type_db, dormitory_id=dormitory_id)
+    max_capacity = await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
     
     await state.update_data(max_capacity=max_capacity)
 
@@ -104,12 +115,19 @@ async def process_machine_type(callback: CallbackQuery, state: FSMContext):
 async def process_simple_calendar(callback: CallbackQuery, callback_data: SimpleCalendarCallback, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
     max_capacity = data.get('max_capacity', 0)
     machine_type_db = data.get('machine_type')
-    workload = await get_month_workload(callback_data.year, callback_data.month, machine_type_db)
+    
+    # Generate header_text consistently (reuse from process_machine_type logic)
+    if machine_type_db == "Стиральная":
+        header_text = f"📅 {t['record_start']} {t['for_wash']}"
+    else:
+        header_text = f"📅 {t['record_start']} {t['for_dry']}"
+    
+    workload = await get_month_workload(callback_data.year, callback_data.month, machine_type_db, dormitory_id=dormitory_id)
     calendar = CustomLaundryCalendar(workload=workload, max_capacity=max_capacity, locale=lang.lower())
 
-    # предполагается, что CustomLaundryCalendar возвращает (selected, date) при process_selection
     selected, date = await calendar.process_selection(callback, callback_data)
 
     if selected and callback_data.act == SimpleCalendarAction.DAY:
@@ -117,7 +135,7 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if date.date() < now_dt.date() or (date.date() == now_dt.date() and now_dt.time() >= time(23, 0)):
             await callback.answer(t["past_date_error"], show_alert=True)
             await callback.message.edit_text(
-                t["record_start"],
+                header_text,  # Use header_text or t["record_start"]
                 reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
@@ -129,18 +147,29 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if free <= 0:
             await callback.answer(t["day_fully_booked"], show_alert=True)
             await callback.message.edit_text(
-                t["record_start"],
+                header_text,  # Use header_text or t["record_start"]
+                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
+            )
+            await state.set_state(AddRecord.waiting_for_day)
+            return
+
+        # Weekly limit check
+        user_id = data.get('user_id')
+        if await has_weekly_booking(user_id, date, machine_type_db):
+            await callback.answer(t["weekly_limit_reached"], show_alert=True)
+            await callback.message.edit_text(
+                header_text,  # FIXED: Use t["record_start"] or header_text (string, not list)
                 reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
             return
 
         await state.update_data(chosen_date=date)
-        slots = await get_available_slots(date, machine_type=machine_type_db)
+        slots = await get_available_slots(date, machine_type=machine_type_db, dormitory_id=dormitory_id)
         if not slots:
             await callback.answer(t["no_slots_available"], show_alert=True)
             await callback.message.edit_text(
-                t["record_start"],
+                header_text,  # Use header_text or t["record_start"]
                 reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
@@ -152,16 +181,13 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         )
         await state.set_state(AddRecord.waiting_for_time)
         await callback.answer()
-        return
-
-    await callback.answer()
-
 
 # Код выбора времени — заменил user_router на booking_router
 @booking_router.callback_query(F.data.startswith("time_"), AddRecord.waiting_for_time)
 async def process_time_slot(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
 
     parts = callback.data.split("_")
     # ожидаем формат time_YEAR_MONTH_DAY_HOUR_MINUTE
@@ -175,7 +201,7 @@ async def process_time_slot(callback: CallbackQuery, state: FSMContext):
     await state.update_data(start_time=chosen_dt)
 
     machine_type_db = data.get('machine_type')
-    available_machines = await get_available_machines(chosen_dt, machine_type_db)
+    available_machines = await get_available_machines(chosen_dt, machine_type_db, dormitory_id=dormitory_id)
 
     if not available_machines:
         await callback.answer(t["no_available_slots_alert"], show_alert=True)
@@ -201,42 +227,57 @@ async def process_machine(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     machine_id = int(callback.data.split("_")[1])
     data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
     duration_minutes = 90
     start_time = data["start_time"]
     end_time = start_time + timedelta(minutes=duration_minutes)
 
-    user = await get_user_by_tg_id(callback.from_user.id)
-    if not user:
-        await callback.answer(t["not_authenticated"], show_alert=True)
+    # Получаем user_id из state (сохранён в process_record_start)
+    user_id = data.get('user_id')
+    if not user_id:
+        await callback.answer(t.get("none_user", "User not found"), show_alert=True)
         return
 
     try:
-        if await is_slot_free(machine_id, start_time):
-            result = await create_booking(
-                user_id=user.id,
-                machine_id=machine_id,
-                start_time=start_time
-            )
+        # Теперь create_booking сама проверит слот и лимит, и бросит ValueError если нужно
+        result = await create_booking(
+            user_id=user_id,
+            machine_id=machine_id,
+            start_time=start_time,
+            dormitory_id=dormitory_id
+        )
 
-            await callback.message.edit_text(
-                t["booking_success"].format(
-                    machine_num=result['machine'].number_machine,
-                    start=start_time.strftime('%d.%m.%Y %H:%M'),
-                    end=end_time.strftime('%H:%M')
-                ),
-                reply_markup=get_exit_keyboard(lang)
-            )
-            await state.clear()
-            await state.update_data(lang=lang)
+        msg = t["booking_success"].format(
+            machine_num=result['machine'].number_machine,
+            start=start_time.strftime('%d.%m.%Y %H:%M'),
+            end=end_time.strftime('%H:%M')
+        )
+        if getattr(result.get("booking"), "dormitory_id", None):
+            msg += f"\n🏢 Общежитие №{result['booking'].dormitory_id}"
+
+        await callback.message.edit_text(
+            msg,
+            reply_markup=get_exit_keyboard(lang)
+        )
+        await state.clear()
+        await state.update_data(lang=lang)
+        return
+
+    except ValueError as e:
+        error_msg = str(e)
+        if error_msg == "Weekly limit reached":
+            await callback.answer(t["weekly_limit_reached"], show_alert=True)
+            # Вернуться назад, например, на выбор времени (опционально)
+            await process_back_to_time(callback, state)
             return
-        else:
+        elif error_msg == "Слот уже занят":  # Или "Slot is already taken", если изменили в repo
             await callback.answer(t["slot_just_taken"], show_alert=True)
+        else:
+            await callback.answer(t["booking_error"], show_alert=True)
+        
+        logging.exception(e)  # Логируем для отладки
 
-    except Exception as e:
-        # лог можно добавить: logging.exception(e)
-        await callback.message.edit_text(t["booking_error"])
-
-    # на всякий случай освобождаем стейт
+    # Освобождаем state на всякий случай
     await state.clear()
     await state.update_data(lang=lang)
 
@@ -260,10 +301,11 @@ async def process_back_to_sections(callback: CallbackQuery, state: FSMContext):
 async def process_back_to_calendar(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
     machine_type_db = data.get('machine_type')
     max_capacity = data.get('max_capacity', 0)
     now = datetime.now()
-    workload = await get_month_workload(now.year, now.month, machine_type_db)
+    workload = await get_month_workload(now.year, now.month, machine_type_db, dormitory_id=dormitory_id)
 
     calendar = CustomLaundryCalendar(
         workload=workload,
@@ -294,12 +336,13 @@ async def process_back_to_calendar(callback: CallbackQuery, state: FSMContext):
 async def process_back_to_time(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     data = await state.get_data()
+    dormitory_id = data.get("dormitory_id", 1)
     chosen_date = data.get('chosen_date')
     if not chosen_date:
         await callback.answer("Дата не найдена", show_alert=True)
         return
     machine_type_db = data.get('machine_type')
-    slots = await get_available_slots(chosen_date, machine_type=machine_type_db)
+    slots = await get_available_slots(chosen_date, machine_type=machine_type_db, dormitory_id=dormitory_id)
     await callback.message.edit_text(
         t["select_time_prompt"].replace("{date}", chosen_date.strftime("%d.%m")),
         reply_markup=get_time_slots_keyboard(chosen_date, slots, lang)
@@ -330,10 +373,13 @@ async def process_exit(callback: CallbackQuery, state: FSMContext):
     # user.first_name — это имя из базы (Инцзе)
     # callback.from_user.first_name — это имя из ТГ (Стас)
     
-    db_name = user.first_name  # Принудительно берем из БД
+    db_name = user.first_name if user else callback.from_user.first_name
     
+    await state.clear()
+    await state.update_data(lang=lang)
+
     await callback.message.edit_text(
-        t["hello_user"].format(name=db_name), # Передаем имя из БД
+        t["hello_user"].format(name=db_name),
         reply_markup=get_section_keyboard(lang)
     )
     await callback.answer()

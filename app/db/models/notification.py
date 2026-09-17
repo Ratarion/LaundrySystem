@@ -1,6 +1,7 @@
-from sqlalchemy import BigInteger, DateTime, String
+from sqlalchemy import BigInteger, DateTime, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
+from typing import Optional
 from app.db.base import Base
 
 class Notification(Base):
@@ -8,5 +9,6 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     id_residents: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime)
-    description: Mapped[str] = mapped_column(String, nullable=False)
+    id_machines: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    create_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    description: Mapped[str] = mapped_column(String, nullable=True)

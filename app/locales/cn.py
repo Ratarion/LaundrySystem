@@ -19,6 +19,7 @@ CNtexts = {
 
         # --- 预订 / 日历 ---
         "record_start": "选择日期",
+        "weekly_limit_reached": "您本周已有预约。限制：每周1次。",
         "past_date_error": "该日期已过。请选择其他日期。",
 
         # ⚠️ 已存在（保留）

@@ -30,6 +30,7 @@ ENtexts = {
 
         # Booking / calendar
         "record_start": "Select a date (function under development)",
+        "weekly_limit_reached": "You already have a booking this week. Limit: 1 per week.",
         "machine": "Machine",
         "show_records_title": "Your bookings:",
         "no_user_bookings": "You have no active bookings.",

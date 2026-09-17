@@ -9,22 +9,21 @@ from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
-USER = os.getenv("USER")
-PASSWORD = os.getenv("PASSWORD")
-HOST = os.getenv("HOST")
-PORT = os.getenv("PORT")
-DBNAME = os.getenv("DBNAME")
+USER = os.getenv("USER", "postgres")
+PASSWORD = os.getenv("PASSWORD", "postgres")
+HOST = os.getenv("HOST", "localhost")
+PORT = os.getenv("PORT", "5432")
+DBNAME = os.getenv("DBNAME", "layndaru_db")
 
-# Формируем URL
-DATABASE_URL = f"postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
+# Формируем URL (если DATABASE_URL задан в .env — используем его, иначе собираем)
+DATABASE_URL = os.getenv("DATABASE_URL") or f"postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
 
 # Создаем движок с NullPool
-# Это критично для работы через Supabase Session Pooler (порт 5432)
 engine = create_async_engine(
     DATABASE_URL,
-    poolclass=NullPool,        # Отключаем встроенный пулинг SQLAlchemy
-    pool_pre_ping=True,        # Проверка соединения перед запросом
-    echo=False                 # Можно поставить True, чтобы видеть SQL запросы в консоли
+    poolclass=NullPool,
+    pool_pre_ping=True,
+    echo=False
 )
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)

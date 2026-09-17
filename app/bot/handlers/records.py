@@ -49,7 +49,8 @@ async def show_records(callback: CallbackQuery, state: FSMContext):
             machine_type = raw_type
         # ------------------------------------
 
-        lines.append(f"• {start_str} - {end_str} • {machine_label} №{machine_num} ({machine_type})")
+        dorm_text = f" • Общ. №{b.dormitory_id}" if getattr(b, "dormitory_id", None) else ""
+        lines.append(f"• {start_str} - {end_str}{dorm_text} • {machine_label} №{machine_num} ({machine_type})")
 
     title = t.get("show_records_title", "Ваши записи:")
     text = title + "\n\n" + "\n".join(lines)

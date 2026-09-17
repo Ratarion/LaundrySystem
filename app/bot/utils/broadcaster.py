@@ -9,19 +9,19 @@ from app.repositories.laundry_repo import get_all_users_with_tg
 from app.bot.keyboards import get_exit_keyboard  # <--- ДОБАВЬТЕ ИМПОРТ
 
 async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_tg_id: int = None):
-    users = await get_all_users_with_tg()
+    dorm_id = booking_data.get("dormitory_id")
+    users = await get_all_users_with_tg(dormitory_id=dorm_id)
     count = 0
 
     for u in users:
-        if exclude_tg_id is not None and getattr(u, "tg_id", None) == exclude_tg_id:
-            continue
-
-        tg_id = getattr(u, "tg_id", None)
+        tg_id = getattr(u, "tg_id", None) or (u[0] if isinstance(u, (tuple, list)) else None)
         if not tg_id:
+            continue
+        if exclude_tg_id is not None and tg_id == exclude_tg_id:
             continue
 
         # Выбор локали
-        lang = getattr(u, "language", "RU")
+        lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
         t = ALL_TEXTS.get(lang) or ALL_TEXTS.get("RU")
 
         # 1. Исправление типа машины (база хранит "Стиральная"/"Сушильная")
