@@ -114,6 +114,9 @@ async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 
 async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90, dormitory_id: Optional[int] = None) -> dict:
     end_time = start_time + timedelta(minutes=duration_minutes)
 
+    if start_time <= datetime.now():
+        raise ValueError("Нельзя забронировать прошедшее или текущее время")
+
     if not await is_slot_free(machine_id, start_time, duration_minutes):
         raise ValueError("Слот уже занят")
 
@@ -279,6 +282,9 @@ async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None, d
 
 async def get_available_machines(start_time: datetime, machine_type: str, dormitory_id: Optional[int] = None) -> List[Machine]:
     """1 запрос вместо 10. Ищем занятые и исключаем их."""
+    if start_time <= datetime.now():
+        return []
+
     duration_minutes = 90
     end_time = start_time + timedelta(minutes=duration_minutes)
 
@@ -339,10 +345,16 @@ async def get_available_slots(
         bookings_result = await session.execute(bookings_query)
         bookings = bookings_result.scalars().all()
 
+    now = datetime.now()
     available_slots = []
     current_slot = start_of_day
 
     while current_slot + timedelta(minutes=slot_duration) <= end_of_day:
+        # Пропускаем слоты, которые уже начались или остались в прошлом
+        if current_slot <= now:
+            current_slot += timedelta(minutes=slot_duration)
+            continue
+
         slot_end = current_slot + timedelta(minutes=slot_duration)
 
         # Считаем, сколько машин занято в этот конкретный слот
@@ -457,7 +469,6 @@ async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: 
         query = select(func.count(Booking.id)).where(
             Booking.inidresidents == user_id,
             Booking.status != 'Отменено',
-            Booking.end_time > now,  # Только будущие/активные
             Booking.start_time >= start_of_week,
             Booking.start_time <= end_of_week
         )

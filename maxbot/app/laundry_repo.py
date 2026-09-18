@@ -10,6 +10,7 @@ from app.db.models.residents import Resident as User
 from app.db.models.machine import Machine as Machine, MACHINE_STATUS_ACTIVE
 from app.db.models.booking import Booking as Booking
 from app.db.models.notification import Notification
+from app.bot.utils.timezone import get_kemerovo_now
 
 # ==========================================
 # РАБОТА С ПОЛЬЗОВАТЕЛЯМИ (АУТЕНТИФИКАЦИЯ MAX)
@@ -117,6 +118,9 @@ async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 
         return result.scalar_one_or_none() is None
 
 async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90, dormitory_id: Optional[int] = None) -> dict:
+    if start_time <= get_kemerovo_now():
+        raise ValueError("Нельзя забронировать время, которое уже прошло")
+
     end_time = start_time + timedelta(minutes=duration_minutes)
 
     if not await is_slot_free(machine_id, start_time, duration_minutes):
@@ -181,7 +185,7 @@ async def get_user_bookings(user_id: int) -> List[Booking]:
             .where(
                 Booking.inidresidents == user_id,
                 Booking.status != 'Отменено',
-                Booking.end_time > datetime.now()
+                Booking.end_time > get_kemerovo_now()
             )
             .order_by(Booking.start_time)
         )
@@ -253,6 +257,9 @@ async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None, d
     return active_machines * slots_per_machine
 
 async def get_available_machines(start_time: datetime, machine_type: str, dormitory_id: Optional[int] = None) -> List[Machine]:
+    if start_time <= get_kemerovo_now():
+        return []
+
     duration_minutes = 90
     end_time = start_time + timedelta(minutes=duration_minutes)
 
@@ -315,8 +322,13 @@ async def get_available_slots(
 
     available_slots = []
     current_slot = start_of_day
+    now = get_kemerovo_now()
 
     while current_slot + timedelta(minutes=slot_duration) <= end_of_day:
+        if current_slot <= now:
+            current_slot += timedelta(minutes=slot_duration)
+            continue
+
         slot_end = current_slot + timedelta(minutes=slot_duration)
 
         busy_count = 0
@@ -335,7 +347,7 @@ async def create_notification(resident_id: int, description: str, booking_id: Op
     async with async_session() as session:
         notification = Notification(
             id_residents=resident_id,
-            create_date=datetime.now(),
+            create_date=get_kemerovo_now(),
             description=description
         )
         session.add(notification)
@@ -354,7 +366,7 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
         return result.scalar_one_or_none()
 
 async def get_bookings_to_remind(minutes_before: int = 20):
-    now = datetime.now()
+    now = get_kemerovo_now()
     target_time = now + timedelta(minutes=minutes_before)
     window = timedelta(minutes=2)
 
@@ -377,7 +389,7 @@ async def set_booking_status(booking_id: int, status: str):
 
 async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 15):
     """Ищет записи, которые скоро начнутся (15 мин), но не подтверждены."""
-    now = datetime.now()
+    now = get_kemerovo_now()
     target_time = now + timedelta(minutes=minutes_before_deadline)
     window = timedelta(minutes=2)
 
@@ -393,8 +405,10 @@ async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 15):
         return result.scalars().all()
 
 async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: Optional[str] = None) -> bool:
-    now = datetime.now()
-
+    """
+    Проверяет, есть ли у пользователя запись на той же календарной неделе (пн-вс), что и target_date.
+    Не отмененные записи блокируют повторную бронь (лимит: 1 раз в неделю).
+    """
     week_day = target_date.weekday()
     start_of_week = target_date - timedelta(days=week_day)
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -406,7 +420,6 @@ async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: 
         query = select(func.count(Booking.id)).where(
             Booking.inidresidents == user_id,
             Booking.status != 'Отменено',
-            Booking.end_time > now,
             Booking.start_time >= start_of_week,
             Booking.start_time <= end_of_week
         )

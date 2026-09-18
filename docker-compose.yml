@@ -50,6 +50,8 @@ services:
     build: ./maxbot
     container_name: layndaru-maxbot
     restart: unless-stopped
+    volumes:
+      - ./maxbot:/app
     environment:
       - TZ=${TZ:-Asia/Novokuznetsk}
       - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}}
@@ -62,6 +64,8 @@ services:
     build: ./vkbot
     container_name: layndaru-vkbot
     restart: unless-stopped
+    volumes:
+      - ./vkbot:/app
     environment:
       - TZ=${TZ:-Asia/Novokuznetsk}
       - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}}

@@ -1,5 +1,6 @@
 <?php
 // public/index.php — FRONT CONTROLLER (MVC)
+date_default_timezone_set('Asia/Novokuznetsk');
 
 // Безопасность сессий (защита от XSS и перехвата cookie через document.cookie)
 if (session_status() === PHP_SESSION_NONE) {

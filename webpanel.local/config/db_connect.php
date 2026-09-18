@@ -1,5 +1,6 @@
 <?php
 // Подключаем Composer autoload и определяем корень проекта
+date_default_timezone_set('Asia/Novokuznetsk');
 $root = dirname(__DIR__);
 require_once $root . '/config/logger.php';
 

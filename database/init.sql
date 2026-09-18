@@ -101,6 +101,8 @@ CREATE TABLE IF NOT EXISTS login_logs (
     timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_login_logs_ip_time ON login_logs (ip_address, timestamp);
+
 -- =============================================================================
 -- НАЧАЛЬНЫЕ ДАННЫЕ (SEEDS)
 -- =============================================================================
@@ -123,18 +125,18 @@ ON CONFLICT (idroom) DO NOTHING;
 -- Пароли хранятся в виде криптографических хешей bcrypt (PASSWORD_DEFAULT)
 -- Смена пароля доступна через панель управления /change-password
 INSERT INTO administrators (username, password_hash, role, dormitory_id) VALUES 
-('admin',       '$2y$10$z1pKAB5k2yjcF4bzsKNPfunJqH99u6vPpONiz2lNW/I.OQ.D5yeNG', 1, NULL),
-('tech',        '$2y$10$WqmoZ63X6asL3Fy1OPbusu4gtc7G7uSBrb6WTJY5qPxTrNmyPnJ.G', 2, NULL),
-('admin_dorm3', '$2y$10$gCJDlgQLrTa4h88PkxBroOXJXqXnhurnwKdzk/K.wkiyOD6qNab6C', 1, 3),
-('tech_dorm3',  '$2y$10$dbHh3dVPmVV1yG3L0OeSR.H5YiDnrKb1G1mNQ7Pdx7Ny97XrHhVlq', 2, 3),
-('admin_dorm4', '$2y$10$Yoc49F6tiRdX8WKL0bcFl.wUXLVToJoXGWJN3cVW24ZTODk2MaOfu', 1, 4),
-('tech_dorm4',  '$2y$10$kTBhvg69r4AAIXW9EDWs.OPQFJVs/WvBXYX0V7iHwc4ITMe1nDb26', 2, 4),
-('admin_dorm1', '$2y$10$AZkcK8zEs.A47JRbI5vy2O.RzPVmgyKMj9p3udk12Vve4APt3qrfu', 1, 1),
-('tech_dorm1',  '$2y$10$KhFqutrfDMvOGrNeMWLKWuRXjLPNJBMTwW2oNbdkuzYJQg6DmZa1C', 2, 1),
-('admin_dorm2', '$2y$10$xy44HTN.XAINrrQrsio6Fuoq1.9VfT11xNR039EoKY1K9yb7cRSku', 1, 2),
-('tech_dorm2',  '$2y$10$dH.fok96p0.yQdT3z5/jUuAf/VOkoN5TacFS2gl254Xok0N/lhRgi', 2, 2),
-('admin_dorm5', '$2y$10$EmX/FN7UtlFkeaxTKkr8RO0C.v/05YyAmIxXYKhG/E41wxYIuuoT2', 1, 5),
-('tech_dorm5',  '$2y$10$XiIKR.xVKl6TNSPutjB81Ocu41Mv25mdUJPL9n1CSGn.u7Cx14FgK', 2, 5)
+('admin',       '$2y$10$4OkUv6LjKKUvXowc5/9vEuQACU2DDwJ6VxVrtBwSnDodjQnyiqO5i', 1, NULL),
+('tech',        '$2y$10$.7aZweoWXigMC14Rjjsn4enOuanr4BntrVmXsDgW4A92yDJkr2brC', 2, NULL),
+('admin_dorm3', '$2y$10$tiK4QyTMNfRodxYPXmv9PuQuBjGuBoVS7I1NAURwYK8kldtZt3v.W', 1, 3),
+('tech_dorm3',  '$2y$10$OZy/fAjbtJzHUC1Xs3T4AuHU6TRRb5WWGuRHQla.gwj5pOyoVVbGy', 2, 3),
+('admin_dorm4', '$2y$10$8z19C24AX8DAs4981GT0l.lGqa2GxGA5/rgvMvl/kq0KcnL5s8DIW', 1, 4),
+('tech_dorm4',  '$2y$10$Iw9/ORlyLxKtEiqc7Qgyvup21LliGI3b40p.9GrADWHl.HIjiwCHK', 2, 4),
+('admin_dorm1', '$2y$10$/YGnlqiueX/NPGs4Ne1bgueWiXF9sAg5J3PkHIeUFAlLLrx4NDkgG', 1, 1),
+('tech_dorm1',  '$2y$10$m8dfotMdJG8M02nVk0E3Sun79CVb4cxXjuwBF4AWnlYqtJ/b4bf6C', 2, 1),
+('admin_dorm2', '$2y$10$S.WIkO9DmkeIp5r1ZCcfduQFSIgBXt8W7x/6Ty9m9u0hraWMAi792', 1, 2),
+('tech_dorm2',  '$2y$10$puL5lNthiXYg4WvLui4wruo6na9Co7s1zic9lsXZ/UBeO5Tj4Zx86', 2, 2),
+('admin_dorm5', '$2y$10$qSSdKcSBEtrNSPZBYWewhekC21QZJ7aZz7dKeVKFXf75/3T9RRZsa', 1, 5),
+('tech_dorm5',  '$2y$10$OsZ4VQeaGLGr1W16ac5G5OK16AYHrESyetSK6mmEEO63pdYvRTwOi', 2, 5)
 ON CONFLICT (username) DO NOTHING;
 
 -- Машины только для Общежитий №3 и №4

@@ -21,6 +21,8 @@ def _to_state_str(state: "BaseStateGroup | str") -> str:
     """
     if isinstance(state, str) and not isinstance(state, BaseStateGroup):
         return state
+    if isinstance(state, dict):
+        return "Idle:none"
     return get_state_repr(state)
 
 
@@ -40,7 +42,7 @@ async def get_current_state(peer_id: int) -> str | None:
     return str(peer.state)
 
 
-async def update_state_data(peer_id: int, state: "BaseStateGroup | str | None" = None, **new_data: Any) -> None:
+async def update_state_data(peer_id: int, state: "BaseStateGroup | str | None | dict" = None, **new_data: Any) -> None:
     """
     Аналог await state.update_data(**kwargs), с опциональной сменой состояния
     (аналог await state.set_state(...), если он делается одновременно).
@@ -50,6 +52,11 @@ async def update_state_data(peer_id: int, state: "BaseStateGroup | str | None" =
     """
     peer = await state_dispenser.get(peer_id)
     data = dict(peer.payload) if peer is not None else {}
+
+    if isinstance(state, dict):
+        data.update(state)
+        state = peer.state if peer is not None else Idle.none
+
     data.update(new_data)
 
     if state is None:

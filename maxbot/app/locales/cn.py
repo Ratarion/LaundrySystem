@@ -28,6 +28,9 @@ CNtexts = {
 
         # ✅ 新增/统一 ключи（必须）
         "select_time_prompt": "选择 {date} 的时间:",
+        "record_time_slots": "选择时间",
+        "select_machine": "选择机器",
+        "record_success": "✅ 预订成功！\n🧺 {type} №{num}\n⏰ {start_time} - {end_time}",
         "select_date_prompt": "请选择日期",
         "day_fully_booked": "该日期已被全部预订。",
         "no_slots_available": "所选日期没有可用的时间段。",

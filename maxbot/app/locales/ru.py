@@ -28,6 +28,9 @@ RUtexts = {
 
         # ✅ НОВЫЕ/унифицированные КЛЮЧИ (ОБЯЗАТЕЛЬНО)
         "select_time_prompt": "Выберите время на {date}:",
+        "record_time_slots": "Выберите время",
+        "select_machine": "Выберите машину",
+        "record_success": "✅ Запись создана!\n🧺 {type} №{num}\n⏰ {start_time} - {end_time}",
         "select_date_prompt": "Выберите дату",
         "day_fully_booked": "На выбранную дату нет свободных мест.",
         "no_slots_available": "На выбранную дату нет доступных временных слотов.",

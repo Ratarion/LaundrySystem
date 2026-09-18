@@ -7,11 +7,10 @@ import aiomax
 from aiomax import Router, Callback, fsm
 
 from app.bot.utils.translate import get_lang_and_texts
+from app.bot.utils.timezone import get_kemerovo_now
 from app.bot.utils.calendar_utils import (
-    build_date_picker_keyboard,
+    build_month_calendar_keyboard,
     parse_picked_date,
-    get_range_bounds,
-    is_day_selectable,
 )
 from app.bot.states import AddRecord
 from app.bot.keyboards import (
@@ -27,7 +26,7 @@ from app.laundry_repo import (
     get_available_slots,
     get_available_machines,
     create_booking,
-    get_range_workload,
+    get_month_workload,
     get_total_daily_capacity_by_type,
     has_weekly_booking,
 )
@@ -58,12 +57,40 @@ def _header_text(t: dict, machine_type_db: str) -> str:
     return f"📅 {t['record_start']} {t['for_dry']}"
 
 
-async def _render_calendar(cb: Callback, lang: str, t: dict, machine_type_db: str, max_capacity: int, offset: int = 0, dormitory_id: int = 1):
-    start, end = get_range_bounds(offset)
-    workload = await get_range_workload(start, end, machine_type_db, dormitory_id=dormitory_id)
-    header_text = _header_text(t, machine_type_db)
-    kb = build_date_picker_keyboard(workload, max_capacity, lang, offset=offset)
-    await cb.answer(text=header_text, keyboard=kb)
+def _format_calendar_header(t: dict, machine_type_db: str, warning: Optional[str] = None) -> str:
+    base = _header_text(t, machine_type_db)
+    if warning:
+        return f"{base}\n\n{warning}"
+    return base
+
+
+async def _render_calendar(
+    cb: Callback,
+    lang: str,
+    t: dict,
+    machine_type_db: str,
+    max_capacity: int,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    dormitory_id: int = 1,
+    warning: Optional[str] = None,
+    notification: Optional[str] = None,
+):
+    now_kemerovo = get_kemerovo_now()
+    cur_year = year or now_kemerovo.year
+    cur_month = month or now_kemerovo.month
+
+    workload = await get_month_workload(cur_year, cur_month, machine_type_db, dormitory_id=dormitory_id)
+    header_text = _format_calendar_header(t, machine_type_db, warning=warning)
+    kb = build_month_calendar_keyboard(
+        cur_year,
+        cur_month,
+        workload,
+        max_capacity,
+        lang=lang,
+        back_cmd="back_to_type"
+    )
+    await cb.answer(notification=notification, text=header_text, keyboard=kb)
 
 
 @booking_router.on_button_callback(lambda cb: _is_cmd(cb, "record"))
@@ -114,22 +141,63 @@ async def process_machine_type(cb: Callback, cursor: fsm.FSMCursor):
     cursor.change_data(data)
 
     cursor.change_state(AddRecord.waiting_for_day)
-    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, offset=0, dormitory_id=dormitory_id)
+    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, dormitory_id=dormitory_id)
 
 
-@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "day_page"))
-async def process_day_page(cb: Callback, cursor: fsm.FSMCursor):
+@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "calendar_month"))
+async def process_calendar_month(cb: Callback, cursor: fsm.FSMCursor):
     user_id = cb.user.user_id
     lang, t = await get_lang_and_texts(user_id, cursor=cursor)
     payload = _get_payload(cb)
-    offset = int(payload.get("offset", 0))
+    try:
+        year = int(payload.get("year"))
+        month = int(payload.get("month"))
+    except (ValueError, TypeError):
+        now_k = get_kemerovo_now()
+        year = now_k.year
+        month = now_k.month
 
     data = cursor.get_data() or {}
     dormitory_id = data.get("dormitory_id", 1)
     machine_type_db = data.get("machine_type", "Стиральная")
     max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
 
-    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, offset=offset, dormitory_id=dormitory_id)
+    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, year=year, month=month, dormitory_id=dormitory_id)
+
+
+@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "day_blocked"))
+async def process_day_blocked(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    payload = _get_payload(cb)
+    reason = payload.get("reason")
+    if reason == "past":
+        raw_msg = t.get("past_date_error", "Этот день уже прошёл. Пожалуйста, выберите другую дату.")
+        msg = f"❌ {raw_msg}" if not raw_msg.startswith("❌") else raw_msg
+    else:
+        raw_msg = t.get("day_fully_booked", "На выбранную дату нет свободных мест.")
+        msg = f"❌ {raw_msg}" if not raw_msg.startswith("❌") else raw_msg
+
+    data = cursor.get_data() or {}
+    dormitory_id = data.get("dormitory_id", 1)
+    machine_type_db = data.get("machine_type", "Стиральная")
+    max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
+
+    await _render_calendar(
+        cb,
+        lang,
+        t,
+        machine_type_db,
+        max_capacity,
+        dormitory_id=dormitory_id,
+        warning=msg,
+        notification=msg,
+    )
+
+
+@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "ignore"))
+async def process_ignore(cb: Callback):
+    await cb.answer()
 
 
 @booking_router.on_button_callback(lambda cb: _is_cmd(cb, "day"))
@@ -149,30 +217,89 @@ async def process_day_pick(cb: Callback, cursor: fsm.FSMCursor):
         await cb.answer(notification="Ошибка даты")
         return
 
-    # Проверка лимита броней в неделю
+    # 1. Проверка на прошедшую дату (по Кемерово)
+    now_kemerovo = get_kemerovo_now()
+    if picked_date < now_kemerovo.date() or (picked_date == now_kemerovo.date() and now_kemerovo.time() >= time(23, 0)):
+        raw_msg = t.get("past_date_error", "Этот день уже прошёл. Пожалуйста, выберите другую дату.")
+        msg = f"❌ {raw_msg}" if not raw_msg.startswith("❌") else raw_msg
+        max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type, dormitory_id=dormitory_id)
+        await _render_calendar(
+            cb,
+            lang,
+            t,
+            machine_type,
+            max_capacity,
+            year=picked_date.year,
+            month=picked_date.month,
+            dormitory_id=dormitory_id,
+            warning=msg,
+            notification=msg,
+        )
+        return
+
+    # 2. Получение resident_id (гарантированное, даже если в FSM потерялось)
     resident_id = data.get("resident_id")
+    if not resident_id:
+        user = await get_user_by_max_id(user_id)
+        if user:
+            resident_id = user.id
+            dormitory_id = getattr(user, "dormitory_id", 1) or 1
+            data["resident_id"] = resident_id
+            data["dormitory_id"] = dormitory_id
+            cursor.change_data(data)
+
+    # 3. Строгая проверка лимита броней: 1 раз в неделю (пн-вс)
     if resident_id:
         target_dt = datetime.combine(picked_date, time(12, 0))
         if await has_weekly_booking(resident_id, target_dt, machine_type):
-            msg = t.get(
+            raw_msg = t.get(
                 "weekly_limit_reached",
-                "⚠️ У вас уже есть активная запись на этой неделе."
+                "Вы уже имеете одну запись на эту неделю. Лимит: 1 в неделю."
             )
-            await cb.answer(notification=msg)
+            msg = f"⚠️ {raw_msg}" if not raw_msg.startswith("⚠️") else raw_msg
+            max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type, dormitory_id=dormitory_id)
+            await _render_calendar(
+                cb,
+                lang,
+                t,
+                machine_type,
+                max_capacity,
+                year=picked_date.year,
+                month=picked_date.month,
+                dormitory_id=dormitory_id,
+                warning=msg,
+                notification=msg,
+            )
             return
 
-    data["picked_date"] = picked_date_str
-    cursor.change_data(data)
-
+    # 4. Проверка доступных слотов
     date_for_slots = datetime.combine(picked_date, time(0, 0))
     slots = await get_available_slots(date_for_slots, machine_type=machine_type, dormitory_id=dormitory_id)
 
     if not slots:
-        await cb.answer(notification=t.get("no_slots", "Нет свободных слотов на этот день"))
+        raw_msg = t.get("day_fully_booked", "На выбранную дату нет свободных мест.")
+        msg = f"❌ {raw_msg}" if not raw_msg.startswith("❌") else raw_msg
+        max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type, dormitory_id=dormitory_id)
+        await _render_calendar(
+            cb,
+            lang,
+            t,
+            machine_type,
+            max_capacity,
+            year=picked_date.year,
+            month=picked_date.month,
+            dormitory_id=dormitory_id,
+            warning=msg,
+            notification=msg,
+        )
         return
 
+    data["picked_date"] = picked_date_str
+    cursor.change_data(data)
+
     date_title = picked_date.strftime("%d.%m.%Y")
-    text = f"⏰ {t['record_time_slots']} ({date_title}):"
+    label = t.get("record_time_slots", "Выберите время")
+    text = f"⏰ {label} ({date_title}):"
     kb = get_time_slots_keyboard(date_for_slots, slots, lang, offset=0)
 
     await cb.answer(text=text, keyboard=kb)
@@ -200,7 +327,8 @@ async def process_time_page(cb: Callback, cursor: fsm.FSMCursor):
     slots = await get_available_slots(date_for_slots, machine_type=machine_type, dormitory_id=dormitory_id)
 
     date_title = picked_date.strftime("%d.%m.%Y")
-    text = f"⏰ {t['record_time_slots']} ({date_title}):"
+    label = t.get("record_time_slots", "Выберите время")
+    text = f"⏰ {label} ({date_title}):"
     kb = get_time_slots_keyboard(date_for_slots, slots, lang, offset=offset)
 
     await cb.answer(text=text, keyboard=kb)
@@ -219,6 +347,10 @@ async def process_time_pick(cb: Callback, cursor: fsm.FSMCursor):
         await cb.answer(notification="Ошибка выбора времени")
         return
 
+    if slot_dt <= get_kemerovo_now():
+        await cb.answer(notification="Выбранное время уже прошло или наступило. Пожалуйста, выберите другое время.")
+        return
+
     data = cursor.get_data() or {}
     dormitory_id = data.get("dormitory_id", 1)
     data["picked_slot"] = slot_iso
@@ -233,7 +365,8 @@ async def process_time_pick(cb: Callback, cursor: fsm.FSMCursor):
 
     slot_end = slot_dt + timedelta(minutes=DURATION_MINUTES)
     time_header = f"{slot_dt.strftime('%d.%m %H:%M')}-{slot_end.strftime('%H:%M')}"
-    text = f"🧺 {t['select_machine']} ({time_header}):"
+    label = t.get("select_machine", "Выберите машину")
+    text = f"🧺 {label} ({time_header}):"
     kb = get_machines_keyboard(available_machines, lang)
 
     await cb.answer(text=text, keyboard=kb)
@@ -288,12 +421,17 @@ async def process_machine_pick(cb: Callback, cursor: fsm.FSMCursor):
     m_type_raw = booking.machine.type_machine
     m_type_label = t.get("machine_type_wash", "Стиральная") if m_type_raw == "Стиральная" else t.get("machine_type_dry", "Сушильная")
 
-    success_msg = t["record_success"].format(
-        type=m_type_label,
-        num=booking.machine.number_machine,
-        start_time=start_time.strftime("%d.%m.%Y %H:%M"),
-        end_time=end_time.strftime("%H:%M")
-    )
+    label = t.get("record_success", "✅ Запись создана!\n🧺 {type} №{num}\n⏰ {start_time} - {end_time}")
+    try:
+        success_msg = label.format(
+            type=m_type_label,
+            num=booking.machine.number_machine,
+            start_time=start_time.strftime("%d.%m.%Y %H:%M"),
+            end_time=end_time.strftime("%H:%M")
+        )
+    except Exception:
+        success_msg = f"✅ Запись создана!\n🧺 {m_type_label} №{booking.machine.number_machine}\n⏰ {start_time.strftime('%d.%m.%Y %H:%M')} - {end_time.strftime('%H:%M')}"
+
     if getattr(booking, "dormitory_id", None):
         success_msg += f"\n🏢 Общежитие №{booking.dormitory_id}"
 
@@ -311,7 +449,7 @@ async def back_to_sections(cb: Callback, cursor: fsm.FSMCursor):
     await cb.answer(text=t.get("section_menu_title", "Главное меню:"), keyboard=get_section_keyboard(lang))
 
 
-@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "back_to_type"))
+@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "back_to_type") or _is_cmd(cb, "back_to_machine_type"))
 async def back_to_type(cb: Callback, cursor: fsm.FSMCursor):
     user_id = cb.user.user_id
     lang, t = await get_lang_and_texts(user_id, cursor=cursor)
@@ -327,8 +465,20 @@ async def back_to_calendar(cb: Callback, cursor: fsm.FSMCursor):
     dormitory_id = data.get("dormitory_id", 1)
     machine_type_db = data.get("machine_type", "Стиральная")
     max_capacity = data.get("max_capacity") or await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
+
+    picked_date_str = data.get("picked_date")
+    year = None
+    month = None
+    if picked_date_str:
+        try:
+            p_dt = parse_picked_date(picked_date_str)
+            year = p_dt.year
+            month = p_dt.month
+        except Exception:
+            pass
+
     cursor.change_state(AddRecord.waiting_for_day)
-    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, offset=0, dormitory_id=dormitory_id)
+    await _render_calendar(cb, lang, t, machine_type_db, max_capacity, year=year, month=month, dormitory_id=dormitory_id)
 
 
 @booking_router.on_button_callback(lambda cb: _is_cmd(cb, "back_to_time"))
@@ -349,7 +499,8 @@ async def back_to_time(cb: Callback, cursor: fsm.FSMCursor):
     slots = await get_available_slots(date_for_slots, machine_type=machine_type, dormitory_id=dormitory_id)
 
     date_title = picked_date.strftime("%d.%m.%Y")
-    text = f"⏰ {t['record_time_slots']} ({date_title}):"
+    label = t.get("record_time_slots", "Выберите время")
+    text = f"⏰ {label} ({date_title}):"
     kb = get_time_slots_keyboard(date_for_slots, slots, lang, offset=0)
 
     await cb.answer(text=text, keyboard=kb)

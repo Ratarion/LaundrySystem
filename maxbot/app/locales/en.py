@@ -30,7 +30,7 @@ ENtexts = {
         "for_dry": "for drying",
 
         # Booking / calendar
-        "record_start": "Select a date (function under development)",
+        "record_start": "Select a date",
         "weekly_limit_reached": "You already have a booking this week. Limit: 1 per week.",
         "machine": "Machine",
         "show_records_title": "Your bookings:",
@@ -40,6 +40,9 @@ ENtexts = {
         "time_prompt": "Select a time for {date}:",
         # new key used in code
         "select_time_prompt": "Select a time for {date}:",
+        "record_time_slots": "Select a time",
+        "select_machine": "Select a machine",
+        "record_success": "✅ Booking created!\n🧺 {type} #{num}\n⏰ {start_time} - {end_time}",
         "select_date_prompt": "Please select a date",
         "day_fully_booked": "This date is fully booked.",
         "no_slots_available": "No slots available on the selected date.",

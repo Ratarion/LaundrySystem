@@ -30,7 +30,7 @@ ENtexts = {
         "for_dry": "for drying",
 
         # Booking / calendar
-        "record_start": "Select a date (function under development)",
+        "record_start": "Select a date",
         "weekly_limit_reached": "You already have a booking this week. Limit: 1 per week.",
         "machine": "Machine",
         "show_records_title": "Your bookings:",

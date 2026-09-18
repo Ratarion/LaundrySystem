@@ -157,12 +157,12 @@ class Booking
     /**
      * Получить ВСЕ бронирования с фильтрами (дата, статус, общежитие, машинка)
      */
-    public static function getAll(PDO $db, $date_from = null, $date_to = null, $status = null, $dormitoryId = null, $machineId = null)
+    public static function getAll(PDO $db, $date_from = null, $date_to = null, $status = null, $dormitoryId = null, $machineId = null, $fio = null)
     {
         try {
             $sql = "
                 SELECT b.id, b.dormitory_id, b.start_time, b.end_time, b.status,
-                       r.last_name, r.first_name, r.inidroom,
+                       r.last_name, r.first_name, r.patronymic, r.inidroom,
                        m.id AS machine_id, m.type_machine, m.number_machine,
                        d.name AS dormitory_name
                 FROM booking b
@@ -203,6 +203,23 @@ class Booking
             if (!empty($machineId)) {
                 $sql .= " AND b.inidmachine = ?";
                 $params[] = (int)$machineId;
+            }
+
+            if (!empty($fio)) {
+                $fioClean = trim($fio);
+                $fioWild  = '%' . $fioClean . '%';
+                $sql .= " AND (
+                    CONCAT(r.last_name, ' ', r.first_name, ' ', COALESCE(r.patronymic, '')) ILIKE ?
+                    OR CONCAT(r.first_name, ' ', r.last_name) ILIKE ?
+                    OR r.last_name ILIKE ?
+                    OR r.first_name ILIKE ?
+                    OR r.patronymic ILIKE ?
+                )";
+                $params[] = $fioWild;
+                $params[] = $fioWild;
+                $params[] = $fioWild;
+                $params[] = $fioWild;
+                $params[] = $fioWild;
             }
 
             $sql .= " ORDER BY b.start_time ASC, b.id ASC";

@@ -16,12 +16,13 @@ from app.laundry_repo import (
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
 from app.bot.keyboards import get_confirm_keyboard
+from app.bot.utils.timezone import get_kemerovo_now
 
 scheduler = AsyncIOScheduler()
 
 
 async def check_confirmations(bot):
-    now = datetime.now()
+    now = get_kemerovo_now()
     logging.debug(f"[MaxBot] check_confirmations at {now.isoformat()}")
 
     # --- ЭТАП 1: Рассылка запросов на подтверждение (за 20 минут) ---

@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, time, timedelta
+from app.bot.utils.timezone import get_kemerovo_now
 from aiogram.exceptions import TelegramBadRequest
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
 try:
@@ -89,7 +90,7 @@ async def process_machine_type(callback: CallbackQuery, state: FSMContext):
     # Теперь в state и в запросы улетит "Стиральная", и БД найдет машины
     await state.update_data(machine_type=machine_type_db)
     
-    now = datetime.now()
+    now = get_kemerovo_now()
     # Теперь эти функции получат правильный тип и вернут реальные цифры, а не 0
     workload = await get_month_workload(now.year, now.month, machine_type_db, dormitory_id=dormitory_id)
     max_capacity = await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
@@ -131,7 +132,7 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
     selected, date = await calendar.process_selection(callback, callback_data)
 
     if selected and callback_data.act == SimpleCalendarAction.DAY:
-        now_dt = datetime.now()
+        now_dt = get_kemerovo_now()
         if date.date() < now_dt.date() or (date.date() == now_dt.date() and now_dt.time() >= time(23, 0)):
             await callback.answer(t["past_date_error"], show_alert=True)
             await callback.message.edit_text(
@@ -194,6 +195,10 @@ async def process_time_slot(callback: CallbackQuery, state: FSMContext):
     year, month, day, hour, minute = map(int, parts[1:6])
     chosen_dt = datetime(year, month, day, hour, minute)
     
+    if chosen_dt <= get_kemerovo_now():
+        await callback.answer(t.get("past_date_error", "Время уже прошло"), show_alert=True)
+        return
+
     # Рассчитываем время окончания (90 минут, как в логике бронирования)
     duration_minutes = 90
     end_dt = chosen_dt + timedelta(minutes=duration_minutes)
@@ -304,7 +309,7 @@ async def process_back_to_calendar(callback: CallbackQuery, state: FSMContext):
     dormitory_id = data.get("dormitory_id", 1)
     machine_type_db = data.get('machine_type')
     max_capacity = data.get('max_capacity', 0)
-    now = datetime.now()
+    now = get_kemerovo_now()
     workload = await get_month_workload(now.year, now.month, machine_type_db, dormitory_id=dormitory_id)
 
     calendar = CustomLaundryCalendar(

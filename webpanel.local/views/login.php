@@ -14,7 +14,12 @@
         <h1 class="login-title">Вход в админ-панель</h1>
 
         <?php if (isset($error)): ?>
-            <div class="login-error">
+            <div class="login-error" style="<?= !empty($is_blocked) ? 'background: #fff1f0; border: 1px solid #ff4d4f; color: #cf1322;' : '' ?>">
+                <?php if (!empty($is_blocked)): ?>
+                    <i class="fa-solid fa-ban" style="margin-right: 6px;"></i>
+                <?php else: ?>
+                    <i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i>
+                <?php endif; ?>
                 <?= e($error) ?>
             </div>
         <?php endif; ?>
@@ -29,6 +34,7 @@
                     placeholder="Введите логин"
                     class="form-control"
                     style="padding: 14px 16px;"
+                    <?= !empty($is_blocked) ? 'disabled' : '' ?>
                 >
             </div>
 
@@ -40,15 +46,17 @@
                     placeholder="Введите пароль"
                     class="form-control"
                     style="padding: 14px 16px;"
+                    <?= !empty($is_blocked) ? 'disabled' : '' ?>
                 >
             </div>
 
             <button 
                 type="submit" 
                 class="btn btn-primary" 
-                style="width: 100%; padding: 14px; font-size: 16px;"
+                style="width: 100%; padding: 14px; font-size: 16px; <?= !empty($is_blocked) ? 'opacity: 0.6; cursor: not-allowed;' : '' ?>"
+                <?= !empty($is_blocked) ? 'disabled' : '' ?>
             >
-                Войти
+                <?= !empty($is_blocked) ? 'Доступ заблокирован' : 'Войти' ?>
             </button>
         </form>
 

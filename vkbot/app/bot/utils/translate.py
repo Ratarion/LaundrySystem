@@ -29,7 +29,7 @@ async def get_lang_and_texts(peer_id: int, user_id: int = None, user=None) -> tu
 
     if not (isinstance(data, dict) and data.get("lang") == lang):
         try:
-            await update_state_data(peer_id, {"lang": lang})
+            await update_state_data(peer_id, lang=lang)
         except Exception:
             pass
 

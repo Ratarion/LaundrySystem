@@ -130,7 +130,7 @@ class Notification
     /**
      * Получить ВСЕ уведомления (с JOIN и опциональным фильтром по общежитию)
      */
-    public static function getAll(PDO $db, $dormitoryId = null)
+    public static function getAll(PDO $db, $dormitoryId = null, $limit = 200)
     {
         try {
             $sql = "
@@ -146,7 +146,7 @@ class Notification
                 $sql .= " WHERE r.dormitory_id = ?";
                 $params[] = (int)$dormitoryId;
             }
-            $sql .= " ORDER BY n.create_date DESC";
+            $sql .= " ORDER BY n.create_date DESC, n.id DESC LIMIT " . (int)$limit;
 
             $stmt = $db->prepare($sql);
             $stmt->execute($params);

@@ -48,7 +48,7 @@ async def cmd_start_initial(message: Message):
         lang = user.language.upper()
         if lang not in ALL_TEXTS:
             lang = "RU"
-        await update_state_data(peer_id, {"lang": lang})
+        await update_state_data(peer_id, lang=lang)
         t = ALL_TEXTS[lang]
         await _send_main_menu(peer_id, user, lang, t)
         return
@@ -79,7 +79,7 @@ async def set_language(event: MessageEvent):
     lang = str(raw_lang).strip().upper()
     if lang not in ALL_TEXTS:
         lang = "RU"
-    await update_state_data(event.peer_id, {"lang": lang})
+    await update_state_data(event.peer_id, lang=lang)
 
     t = ALL_TEXTS[lang]
     user = await get_user_by_vk_id(event.user_id)
@@ -90,7 +90,7 @@ async def set_language(event: MessageEvent):
     else:
         await event.edit_message(t["auth"])
         await set_state(event.peer_id, Auth.waiting_for_fio)
-        await update_state_data(event.peer_id, {"lang": lang})
+        await update_state_data(event.peer_id, lang=lang)
 
 
 @auth_labeler.message(StateRule(Auth.waiting_for_fio))

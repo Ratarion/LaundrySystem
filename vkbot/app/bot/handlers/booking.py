@@ -177,6 +177,10 @@ async def process_time_slot(event: MessageEvent):
     dormitory_id = data.get("dormitory_id", 1)
 
     chosen_dt = datetime.fromisoformat(event.payload["start"])
+    if chosen_dt <= datetime.now():
+        await event.show_snackbar(t.get("slot_in_past", "Это время уже прошло или стирка уже началась. Выберите другое время."))
+        return
+
     end_dt = chosen_dt + timedelta(minutes=DURATION_MINUTES)
 
     await update_state_data(peer_id, start_time=chosen_dt.isoformat())

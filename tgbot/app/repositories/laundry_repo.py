@@ -11,6 +11,7 @@ from app.db.models.residents import Resident as User
 from app.db.models.machine import Machine as Machine, MACHINE_STATUS_ACTIVE
 from app.db.models.booking import Booking as Booking
 from app.db.models.notification import Notification
+from app.bot.utils.timezone import get_kemerovo_now
 
 # ==========================================
 # РАБОТА С ПОЛЬЗОВАТЕЛЯМИ (АУТЕНТИФИКАЦИЯ)
@@ -113,6 +114,8 @@ async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 
         return result.scalar_one_or_none() is None
 
 async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90, dormitory_id: Optional[int] = None) -> dict:
+    if start_time <= get_kemerovo_now():
+        raise ValueError("Cannot book past time")
     end_time = start_time + timedelta(minutes=duration_minutes)
     
     # Проверка слота (как раньше)
@@ -149,7 +152,7 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
 
 async def get_user_bookings(user_id: int) -> List[Booking]:
     async with async_session() as session:
-        now = datetime.now()  # Получаем текущее время
+        now = get_kemerovo_now()  # Получаем текущее время (Kemerovo)
         
         query = (
             select(Booking)
@@ -295,6 +298,10 @@ async def get_available_slots(
 ) -> List[datetime]:
     start_of_day = date.replace(hour=work_start, minute=0, second=0, microsecond=0)
     end_of_day = date.replace(hour=work_end, minute=0, second=0, microsecond=0)
+    now = get_kemerovo_now()
+
+    if date.date() < now.date():
+        return []
 
     async with async_session() as session:
         conditions = [Machine.status == MACHINE_STATUS_ACTIVE]
@@ -323,6 +330,10 @@ async def get_available_slots(
     current_slot = start_of_day
 
     while current_slot + timedelta(minutes=slot_duration) <= end_of_day:
+        if current_slot <= now:
+            current_slot += timedelta(minutes=slot_duration)
+            continue
+
         slot_end = current_slot + timedelta(minutes=slot_duration)
         
         # Считаем, сколько машин занято в этот конкретный слот
@@ -345,7 +356,7 @@ async def create_notification(resident_id: int, description: str, booking_id: Op
     async with async_session() as session:
         notification = Notification(
             id_residents=resident_id,
-            create_date=datetime.now(),
+            create_date=get_kemerovo_now(),
             description=description
         )
         session.add(notification)
@@ -368,11 +379,12 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
 
 
 
+
 async def get_bookings_to_remind(minutes_before: int = 40):
     """Ищет записи, которые начнутся через minutes_before, и статус еще не 'wait_confirm'/'confirmed'"""
     # Логика: start_time в интервале [now + minutes_before, now + minutes_before + 2 min]
     # Чтобы не спамить, берем узкое окно
-    now = datetime.now()
+    now = get_kemerovo_now()
     target_time = now + timedelta(minutes=minutes_before)
     window = timedelta(minutes=2) 
     
@@ -396,7 +408,7 @@ async def set_booking_status(booking_id: int, status: str):
 
 async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
     """Ищет записи, которые вот-вот начнутся (30 мин), но статус 'wait_confirm' (не подтвердили)"""
-    now = datetime.now()
+    now = get_kemerovo_now()
     # Если время старта <= now + 30 min и статус все еще wait_confirm
     # Берем записи, которые стартуют в ближайшие 30-31 минуту
     target_time = now + timedelta(minutes=minutes_before_deadline)

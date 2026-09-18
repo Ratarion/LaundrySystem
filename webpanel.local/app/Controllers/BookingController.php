@@ -165,6 +165,7 @@ class BookingController extends BaseController
         $machine_id = !empty($_REQUEST['machine_id']) ? (int)$_REQUEST['machine_id'] : '';
         $validStatuses = ['Ожидание', 'Ожидание подтверждения', 'Подтверждено', 'Отменено'];
         $status = in_array($_REQUEST['status'] ?? '', $validStatuses, true) ? $_REQUEST['status'] : '';
+        $fio = trim($_REQUEST['fio'] ?? '');
 
         // Выбранная дата: одиночная или диапазон
         $single_date = trim($_REQUEST['date'] ?? '');
@@ -186,7 +187,7 @@ class BookingController extends BaseController
             }
         }
 
-        $bookings    = Booking::getAll($this->pdo, $date_from, $date_to, $status, $dormitory_id, $machine_id);
+        $bookings    = Booking::getAll($this->pdo, $date_from, $date_to, $status, $dormitory_id, $machine_id, $fio);
         $dormitories = Dormitory::getAll($this->pdo);
         $machines    = Machine::getAll($this->pdo, $dormitory_id ?: null);
 
@@ -204,6 +205,7 @@ class BookingController extends BaseController
             'date_from'     => $date_from,
             'date_to'       => $date_to,
             'status'        => $status,
+            'fio'           => $fio,
             'success'       => $successMessage,
             'error'         => $_GET['error'] ?? ''
         ], $isLoggedIn);

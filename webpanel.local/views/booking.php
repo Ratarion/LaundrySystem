@@ -69,6 +69,11 @@
             </div>
 
             <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-user"></i> ФИО жителя</label>
+                <input type="text" name="fio" value="<?= e($fio ?? '') ?>" class="form-control" placeholder="Поиск по ФИО...">
+            </div>
+
+            <div class="form-group">
                 <label class="form-label"><i class="fa-solid fa-calendar-day"></i> Дата с</label>
                 <input type="date" name="date_from" id="dateFromInput" value="<?= e($date_from) ?>" class="form-control">
             </div>
@@ -213,7 +218,7 @@
                                 <?= e(!empty($b['dormitory_name']) ? $b['dormitory_name'] : ('Общежитие №' . ($b['dormitory_id'] ?? '1'))) ?>
                             </span>
                         </td>
-                        <td style="font-weight: 600;"><?= e($b['last_name'] . ' ' . $b['first_name']) ?></td>
+                        <td style="font-weight: 600;"><?= e(trim($b['last_name'] . ' ' . $b['first_name'] . ' ' . ($b['patronymic'] ?? ''))) ?></td>
                         <td style="text-align: center; font-weight: 600;"><?= e($b['inidroom']) ?></td>
                         <td><?= e($b['type_machine']) ?> #<?= e($b['number_machine']) ?></td>
                         <td><?= date('d.m.Y H:i', strtotime($b['start_time'])) ?></td>
@@ -267,6 +272,9 @@ function filterMachinesByDormitory() {
                 machineSelect.value = '';
             }
         }
+    }
+    if (machineSelect._customSelect) {
+        machineSelect._customSelect.sync();
     }
 }
 

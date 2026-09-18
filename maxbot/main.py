@@ -10,6 +10,7 @@ if hasattr(time, 'tzset'):
     time.tzset()
 
 
+import app.bot.patch_aiomax  # Monkey-patch aiomax Callback.answer to fix errors.required on popups
 from app.bot.loader import bot
 from app.bot.handlers.auth import auth_router
 from app.bot.handlers.booking import booking_router
