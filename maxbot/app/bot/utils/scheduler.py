@@ -25,9 +25,9 @@ async def check_confirmations(bot):
     now = get_kemerovo_now()
     logging.debug(f"[MaxBot] check_confirmations at {now.isoformat()}")
 
-    # --- ЭТАП 1: Рассылка запросов на подтверждение (за 20 минут) ---
+    # --- ЭТАП 1: Рассылка запросов на подтверждение (за 1 час / 60 минут) ---
     try:
-        bookings_to_remind = await get_bookings_to_remind(minutes_before=20)
+        bookings_to_remind = await get_bookings_to_remind(minutes_before=60, minutes_deadline=30)
     except Exception as e:
         logging.error(f"[MaxBot] Ошибка при выборке bookings_to_remind: {e}")
         bookings_to_remind = []
@@ -92,9 +92,9 @@ async def check_confirmations(bot):
             except Exception as e:
                 logging.error(f"[MaxBot] Ошибка отправки напоминания пользователю {user.max_id}: {e}")
 
-    # --- ЭТАП 2: Автоотмена просроченных записей (за 15 минут) ---
+    # --- ЭТАП 2: Автоотмена просроченных записей (за 30 минут) ---
     try:
-        expired_bookings = await get_expired_unconfirmed_bookings(minutes_before_deadline=15)
+        expired_bookings = await get_expired_unconfirmed_bookings(minutes_before_deadline=30)
     except Exception as e:
         logging.error(f"[MaxBot] Ошибка при выборке expired_bookings: {e}")
         expired_bookings = []

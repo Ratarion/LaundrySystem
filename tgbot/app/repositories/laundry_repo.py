@@ -136,13 +136,17 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
         if await has_weekly_booking(user_id, start_time, machine_type):
             raise ValueError("Weekly limit reached")
 
+        # Если запись создается менее чем за 60 минут до начала (например, на ближайший слот сегодня),
+        # житель прямо сейчас бронирует слот — автоматически ставим статус 'Подтверждено'
+        initial_status = "Подтверждено" if start_time <= get_kemerovo_now() + timedelta(minutes=60) else "Ожидание"
+
         booking = Booking(
             dormitory_id=dorm_id,
             inidresidents=user_id,
             inidmachine=machine_id,
             start_time=start_time,
             end_time=end_time,
-            status="Ожидание"
+            status=initial_status
         )
         session.add(booking)
         await session.commit()
@@ -380,20 +384,17 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
 
 
 
-async def get_bookings_to_remind(minutes_before: int = 40):
-    """Ищет записи, которые начнутся через minutes_before, и статус еще не 'wait_confirm'/'confirmed'"""
-    # Логика: start_time в интервале [now + minutes_before, now + minutes_before + 2 min]
-    # Чтобы не спамить, берем узкое окно
+async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int = 30):
+    """Ищет записи, которые начнутся через minutes_before (60 мин), и статус еще 'Ожидание' (напоминание еще не отправлялось)"""
     now = get_kemerovo_now()
-    target_time = now + timedelta(minutes=minutes_before)
-    window = timedelta(minutes=2) 
+    max_time = now + timedelta(minutes=minutes_before)
+    min_time = now + timedelta(minutes=minutes_deadline)
     
     async with async_session() as session:
-        # Ищем записи, статус которых (active или None) и время подходит
-        query = select(Booking).options(joinedload(Booking.user)).where(
+        query = select(Booking).options(joinedload(Booking.user), joinedload(Booking.machine)).where(
             and_(
-                Booking.start_time >= target_time,
-                Booking.start_time <= target_time + window,
+                Booking.start_time <= max_time,
+                Booking.start_time > min_time,
                 or_(Booking.status == 'Ожидание', Booking.status == None) 
             )
         )
@@ -407,18 +408,15 @@ async def set_booking_status(booking_id: int, status: str):
         await session.commit()
 
 async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
-    """Ищет записи, которые вот-вот начнутся (30 мин), но статус 'wait_confirm' (не подтвердили)"""
+    """Ищет записи, до начала которых осталось <= minutes_before_deadline (30 мин), но статус все еще не подтвержден"""
     now = get_kemerovo_now()
-    # Если время старта <= now + 30 min и статус все еще wait_confirm
-    # Берем записи, которые стартуют в ближайшие 30-31 минуту
-    target_time = now + timedelta(minutes=minutes_before_deadline)
-    window = timedelta(minutes=2)
+    deadline_time = now + timedelta(minutes=minutes_before_deadline)
 
     async with async_session() as session:
         query = select(Booking).options(joinedload(Booking.machine), joinedload(Booking.user)).where(
             and_(
-                Booking.start_time <= target_time + window,
-                Booking.start_time >= target_time, 
+                Booking.start_time <= deadline_time,
+                Booking.start_time >= now - timedelta(minutes=15), 
                 Booking.status.in_(['Ожидание', 'Ожидание подтверждения'])
             )
         )
@@ -433,7 +431,7 @@ async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: 
     Неделя: с понедельника по воскресенье.
     Если machine_type указан, проверяет только для этого типа машины.
     """
-    now = datetime.now()
+    now = get_kemerovo_now()
     
     # Определяем начало и конец недели для target_date
     week_day = target_date.weekday()  # 0 = понедельник, 6 = воскресенье

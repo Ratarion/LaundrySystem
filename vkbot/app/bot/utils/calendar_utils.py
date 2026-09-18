@@ -26,11 +26,12 @@ from datetime import datetime, timedelta, date as date_cls, time
 from vkbottle import Keyboard, Callback, KeyboardButtonColor
 
 from app.bot.keyboards import get_texts
+from app.bot.utils.timezone import get_kemerovo_now, get_kemerovo_today
 
 DAY_ROW_SIZE = 3          # кнопок дней в строке
-WINDOW_SIZE = 7           # дней показываем за раз (1 неделя) — см. докстринг выше
+WINDOW_SIZE = 6           # всего дней в окне пагинации (2 строки по 3)
 HORIZON_DAYS = 63         # дальше этого не даём листать вперёд (9 недель)
-CUTOFF_HOUR = 23          # после этого часа "сегодня" уже нельзя забронировать
+CUTOFF_HOUR = 23          # после 23:00 текущий день уже недоступен
 
 _WEEKDAY_ABBR = {
     "RU": ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
@@ -40,7 +41,7 @@ _WEEKDAY_ABBR = {
 
 
 def _status_emoji(day: date_cls, used: int, max_capacity: int) -> str:
-    now = datetime.now()
+    now = get_kemerovo_now()
     is_past_or_closed = day < now.date() or (day == now.date() and now.time() >= time(CUTOFF_HOUR, 0))
     if is_past_or_closed:
         return "⚪"
@@ -56,7 +57,7 @@ def _status_emoji(day: date_cls, used: int, max_capacity: int) -> str:
 
 def is_day_selectable(day: date_cls, used: int, max_capacity: int) -> bool:
     """Финальная проверка (та же, что используется при обработке нажатия)."""
-    now = datetime.now()
+    now = get_kemerovo_now()
     if day < now.date() or (day == now.date() and now.time() >= time(CUTOFF_HOUR, 0)):
         return False
     if max_capacity <= 0:
@@ -78,7 +79,7 @@ def build_date_picker_keyboard(
     offset:   сколько дней от сегодняшнего пропустить (для пагинации)
     """
     t = get_texts(lang)
-    today = datetime.now().date()
+    today = get_kemerovo_today()
     weekday_abbr = _WEEKDAY_ABBR.get(lang, _WEEKDAY_ABBR["RU"])
 
     kb = Keyboard(inline=True)
@@ -121,7 +122,7 @@ def parse_picked_date(date_str: str) -> datetime:
 
 def get_range_bounds(offset: int, window_size: int = WINDOW_SIZE) -> tuple[datetime, datetime]:
     """Границы диапазона дат, которые сейчас показаны на клавиатуре (для запроса workload)."""
-    today = datetime.now().date()
+    today = get_kemerovo_today()
     start = datetime(today.year, today.month, today.day) + timedelta(days=offset)
     end = start + timedelta(days=window_size)
     return start, end

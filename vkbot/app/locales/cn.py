@@ -44,7 +44,7 @@ CNtexts = {
             "⏳ <b>预约确认</b>\n\n"
             "您已预约 {machine_type}机 №{machine_num} 于 <b>{date}</b> "
             "(时间: {time_range})。\n"
-            "请确认预约，否则将在 10 分钟后自动取消。"
+            "洗衣将在1小时后开始！请在30分钟内点击下方按钮确认，否则预约将被自动取消。"
         ),
         "confirm_btn": "✅ 我会来",
         "booking_confirmed": "✅ 预约已确认！期待您的到来。",

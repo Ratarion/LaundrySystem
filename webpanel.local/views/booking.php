@@ -204,6 +204,8 @@
                         $badgeClass = 'badge-secondary';
                         if ($currStatus === 'Ожидание') {
                             $badgeClass = 'badge-warning';
+                        } elseif ($currStatus === 'Ожидание подтверждения') {
+                            $badgeClass = 'badge-info';
                         } elseif ($currStatus === 'Подверженная' || $currStatus === 'Подтверждено') {
                             $badgeClass = 'badge-success';
                         } elseif (in_array($currStatus, ['cancelled', 'Отменено', 'Отмена'])) {

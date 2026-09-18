@@ -18,6 +18,7 @@ from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
 from app.bot.utils.text import strip_html
 from app.bot.keyboards import get_confirm_keyboard
+from app.bot.utils.timezone import get_kemerovo_now
 
 scheduler = AsyncIOScheduler()
 
@@ -42,12 +43,12 @@ async def _safe_create_task(coro):
 
 
 async def check_confirmations(bot: Bot):
-    now = datetime.now()
+    now = get_kemerovo_now()
     logging.debug(f"check_confirmations run at {now.isoformat()}")
 
-    # --- ЭТАП 1: Рассылка запросов на подтверждение (за 20 минут) ---
+    # --- ЭТАП 1: Рассылка запросов на подтверждение (за 1 час / 60 минут) ---
     try:
-        bookings_to_remind = await get_bookings_to_remind(minutes_before=20)
+        bookings_to_remind = await get_bookings_to_remind(minutes_before=60, minutes_deadline=30)
     except Exception as e:
         logging.error(f"Failed to fetch bookings_to_remind: {e}")
         bookings_to_remind = []
@@ -121,9 +122,9 @@ async def check_confirmations(bot: Bot):
                 logging.error(f"Failed to send confirm request to {getattr(user, 'vk_id', None)}: {e}")
                 continue
 
-    # --- ЭТАП 2: Авто-отмена (за 10 минут) ---
+    # --- ЭТАП 2: Авто-отмена (за 30 минут) ---
     try:
-        expired = await get_expired_unconfirmed_bookings(minutes_before_deadline=10)
+        expired = await get_expired_unconfirmed_bookings(minutes_before_deadline=30)
     except Exception as e:
         logging.error(f"Failed to fetch expired unconfirmed bookings: {e}")
         expired = []

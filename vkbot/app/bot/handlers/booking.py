@@ -11,6 +11,7 @@ from app.bot.utils.calendar_utils import (
     parse_picked_date,
     get_range_bounds,
 )
+from app.bot.utils.timezone import get_kemerovo_now, get_kemerovo_today
 from app.bot.states import AddRecord
 from app.bot.keyboards import (
     get_section_keyboard,
@@ -133,7 +134,7 @@ async def process_day_picked(event: MessageEvent):
     date = parse_picked_date(event.payload["date"])
     header_text = _header_text(t, machine_type_db)
 
-    now_dt = datetime.now()
+    now_dt = get_kemerovo_now()
     if date.date() < now_dt.date() or (date.date() == now_dt.date() and now_dt.time() >= time(23, 0)):
         await event.show_snackbar(t["past_date_error"])
         return
@@ -177,7 +178,7 @@ async def process_time_slot(event: MessageEvent):
     dormitory_id = data.get("dormitory_id", 1)
 
     chosen_dt = datetime.fromisoformat(event.payload["start"])
-    if chosen_dt <= datetime.now():
+    if chosen_dt <= get_kemerovo_now():
         await event.show_snackbar(t.get("slot_in_past", "Это время уже прошло или стирка уже началась. Выберите другое время."))
         return
 

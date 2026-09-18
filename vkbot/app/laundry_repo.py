@@ -11,6 +11,7 @@ from app.db.models.residents import Resident as User
 from app.db.models.machine import Machine as Machine, MACHINE_STATUS_ACTIVE
 from app.db.models.booking import Booking as Booking
 from app.db.models.notification import Notification
+from app.bot.utils.timezone import get_kemerovo_now, get_kemerovo_today
 
 # ==========================================
 # РАБОТА С ПОЛЬЗОВАТЕЛЯМИ (АУТЕНТИФИКАЦИЯ)
@@ -114,7 +115,7 @@ async def is_slot_free(machine_id: int, date: datetime, duration_minutes: int = 
 async def create_booking(user_id: int, machine_id: int, start_time: datetime, duration_minutes: int = 90, dormitory_id: Optional[int] = None) -> dict:
     end_time = start_time + timedelta(minutes=duration_minutes)
 
-    if start_time <= datetime.now():
+    if start_time <= get_kemerovo_now():
         raise ValueError("Нельзя забронировать прошедшее или текущее время")
 
     if not await is_slot_free(machine_id, start_time, duration_minutes):
@@ -133,13 +134,17 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
         if await has_weekly_booking(user_id, start_time, machine_type):
             raise ValueError("Weekly limit reached")
 
+        # Если запись создается менее чем за 60 минут до начала (например, на ближайший слот сегодня),
+        # житель прямо сейчас бронирует слот — автоматически ставим статус 'Подтверждено'
+        initial_status = "Подтверждено" if start_time <= get_kemerovo_now() + timedelta(minutes=60) else "Ожидание"
+
         booking = Booking(
             dormitory_id=dorm_id,
             inidresidents=user_id,
             inidmachine=machine_id,
             start_time=start_time,
             end_time=end_time,
-            status="Ожидание"
+            status=initial_status
         )
         session.add(booking)
         await session.commit()
@@ -149,7 +154,7 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
 
 async def get_user_bookings(user_id: int) -> List[Booking]:
     async with async_session() as session:
-        now = datetime.now()  # Получаем текущее время
+        now = get_kemerovo_now()  # Получаем текущее время (Kemerovo)
 
         query = (
             select(Booking)
@@ -282,7 +287,7 @@ async def get_total_daily_capacity_by_type(machine_type: Optional[str] = None, d
 
 async def get_available_machines(start_time: datetime, machine_type: str, dormitory_id: Optional[int] = None) -> List[Machine]:
     """1 запрос вместо 10. Ищем занятые и исключаем их."""
-    if start_time <= datetime.now():
+    if start_time <= get_kemerovo_now():
         return []
 
     duration_minutes = 90
@@ -345,7 +350,7 @@ async def get_available_slots(
         bookings_result = await session.execute(bookings_query)
         bookings = bookings_result.scalars().all()
 
-    now = datetime.now()
+    now = get_kemerovo_now()
     available_slots = []
     current_slot = start_of_day
 
@@ -355,17 +360,11 @@ async def get_available_slots(
             current_slot += timedelta(minutes=slot_duration)
             continue
 
-        slot_end = current_slot + timedelta(minutes=slot_duration)
-
-        # Считаем, сколько машин занято в этот конкретный слот
         busy_count = 0
         for b in bookings:
-            # Пересечение интервалов
-            # (StartA < EndB) and (EndA > StartB)
-            if b.start_time < slot_end and b.end_time > current_slot:
+            if b.start_time < current_slot + timedelta(minutes=slot_duration) and b.end_time > current_slot:
                 busy_count += 1
 
-        # Если занято меньше машин, чем всего есть -> слот свободен
         if busy_count < total_machines:
             available_slots.append(current_slot)
 
@@ -377,7 +376,7 @@ async def create_notification(resident_id: int, description: str, booking_id: Op
     async with async_session() as session:
         notification = Notification(
             id_residents=resident_id,
-            create_date=datetime.now(),
+            create_date=get_kemerovo_now(),
             description=description
         )
         session.add(notification)
@@ -399,20 +398,17 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
 
 
 
-async def get_bookings_to_remind(minutes_before: int = 40):
-    """Ищет записи, которые начнутся через minutes_before, и статус еще не 'wait_confirm'/'confirmed'"""
-    # Логика: start_time в интервале [now + minutes_before, now + minutes_before + 2 min]
-    # Чтобы не спамить, берем узкое окно
-    now = datetime.now()
-    target_time = now + timedelta(minutes=minutes_before)
-    window = timedelta(minutes=2)
+async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int = 30):
+    """Ищет записи, которые начнутся через minutes_before (60 мин), и статус еще 'Ожидание' (напоминание еще не отправлялось)"""
+    now = get_kemerovo_now()
+    max_time = now + timedelta(minutes=minutes_before)
+    min_time = now + timedelta(minutes=minutes_deadline)
 
     async with async_session() as session:
-        # Ищем записи, статус которых (active или None) и время подходит
-        query = select(Booking).options(joinedload(Booking.user)).where(
+        query = select(Booking).options(joinedload(Booking.user), joinedload(Booking.machine)).where(
             and_(
-                Booking.start_time >= target_time,
-                Booking.start_time <= target_time + window,
+                Booking.start_time <= max_time,
+                Booking.start_time > min_time,
                 or_(Booking.status == 'Ожидание', Booking.status == None)
             )
         )
@@ -426,21 +422,15 @@ async def set_booking_status(booking_id: int, status: str):
         await session.commit()
 
 async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
-    """Ищет записи, которые вот-вот начнутся (30 мин), но статус все еще не 'Подтверждено'"""
-    now = datetime.now()
-    # Если время старта <= now + 30 min и статус все еще не подтверждён
-    # Берем записи, которые стартуют в ближайшие 30-31 минуту
-    target_time = now + timedelta(minutes=minutes_before_deadline)
-    window = timedelta(minutes=2)
+    """Ищет записи, до начала которых осталось <= minutes_before_deadline (30 мин), но статус все еще не подтвержден"""
+    now = get_kemerovo_now()
+    deadline_time = now + timedelta(minutes=minutes_before_deadline)
 
     async with async_session() as session:
         query = select(Booking).options(joinedload(Booking.machine), joinedload(Booking.user)).where(
             and_(
-                Booking.start_time <= target_time + window,
-                Booking.start_time >= target_time,
-                # "Ожидание" — на случай, если отправить напоминание не удалось (см. scheduler.py)
-                # и бронь так и осталась в исходном статусе; "Ожидание подтверждения" — обычный
-                # путь после того, как напоминание с кнопкой было успешно отправлено.
+                Booking.start_time <= deadline_time,
+                Booking.start_time >= now - timedelta(minutes=15),
                 Booking.status.in_(['Ожидание', 'Ожидание подтверждения'])
             )
         )
@@ -455,7 +445,7 @@ async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: 
     Неделя: с понедельника по воскресенье.
     Если machine_type указан, проверяет только для этого типа машины.
     """
-    now = datetime.now()
+    now = get_kemerovo_now()
 
     # Определяем начало и конец недели для target_date
     week_day = target_date.weekday()  # 0 = понедельник, 6 = воскресенье

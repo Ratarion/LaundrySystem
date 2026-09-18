@@ -138,13 +138,17 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
         if await has_weekly_booking(user_id, start_time, machine_type):
             raise ValueError(f"Лимит: не более 1 брони типа '{machine_type}' в неделю.")
 
+        # Если запись создается менее чем за 60 минут до начала (например, на ближайший слот сегодня),
+        # житель прямо сейчас бронирует слот — автоматически ставим статус 'Подтверждено'
+        initial_status = "Подтверждено" if start_time <= get_kemerovo_now() + timedelta(minutes=60) else "Ожидание"
+
         booking = Booking(
             dormitory_id=dorm_id,
             inidresidents=user_id,
             inidmachine=machine_id,
             start_time=start_time,
             end_time=end_time,
-            status='Ожидание'
+            status=initial_status
         )
         session.add(booking)
         await session.commit()
@@ -365,16 +369,16 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
-async def get_bookings_to_remind(minutes_before: int = 20):
+async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int = 30):
     now = get_kemerovo_now()
-    target_time = now + timedelta(minutes=minutes_before)
-    window = timedelta(minutes=2)
+    max_time = now + timedelta(minutes=minutes_before)
+    min_time = now + timedelta(minutes=minutes_deadline)
 
     async with async_session() as session:
         query = select(Booking).options(joinedload(Booking.user), joinedload(Booking.machine)).where(
             and_(
-                Booking.start_time >= target_time,
-                Booking.start_time <= target_time + window,
+                Booking.start_time <= max_time,
+                Booking.start_time > min_time,
                 or_(Booking.status == 'Ожидание', Booking.status == None)
             )
         )
@@ -387,17 +391,16 @@ async def set_booking_status(booking_id: int, status: str):
         await session.execute(query)
         await session.commit()
 
-async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 15):
-    """Ищет записи, которые скоро начнутся (15 мин), но не подтверждены."""
+async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
+    """Ищет записи, до начала которых осталось <= minutes_before_deadline (30 мин), но не подтверждены."""
     now = get_kemerovo_now()
-    target_time = now + timedelta(minutes=minutes_before_deadline)
-    window = timedelta(minutes=2)
+    deadline_time = now + timedelta(minutes=minutes_before_deadline)
 
     async with async_session() as session:
         query = select(Booking).options(joinedload(Booking.machine), joinedload(Booking.user)).where(
             and_(
-                Booking.start_time <= target_time + window,
-                Booking.start_time >= target_time,
+                Booking.start_time <= deadline_time,
+                Booking.start_time >= now - timedelta(minutes=15),
                 Booking.status.in_(['Ожидание', 'Ожидание подтверждения'])
             )
         )

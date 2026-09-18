@@ -16,10 +16,11 @@ ENtexts = {
         "machine_type": "Machine",
         "select_machine_type": "Select machine type",
         "confirm_booking_prompt": (
-            "⏳ <b>Booking confirmation</b>\n\n"
-            "You have scheduled {machine_type} machine №{machine_num} on <b>{date}</b> "
+            "⏳ Booking confirmation\n\n"
+            "You have scheduled {machine_type} machine №{machine_num} on {date} "
             "(time: {time_range}).\n"
-            "Please confirm your booking, otherwise it will be automatically canceled in 10 minutes."
+            "Laundry starts in 1 hour! Please confirm your booking using the button below within 30 minutes, "
+            "otherwise it will be canceled automatically."
         ),
         "confirm_btn": "✅ I will come",
         "booking_confirmed": "✅ Booking confirmed! We are waiting for you.",
