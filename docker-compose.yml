@@ -36,9 +36,9 @@ services:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASS=${DB_PASS:-postgres}
       - DB_SSLMODE=disable
-      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-YOUR_TG_BOT_TOKEN}
-      - VK_TOKEN=${VK_TOKEN:-YOUR_VK_TOKEN}
-      - VK_GROUP_ID=${VK_GROUP_ID:-236004082}
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-}
+      - VK_TOKEN=${VK_TOKEN:-}
+      - VK_GROUP_ID=${VK_GROUP_ID:-}
       - MAX_TOKEN=${MAX_TOKEN:-}
     depends_on:
       postgres:
@@ -61,8 +61,8 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
-      - VK_TOKEN=${VK_TOKEN:-YOUR_VK_TOKEN}
-      - VK_GROUP_ID=${VK_GROUP_ID:-236004082}
+      - VK_TOKEN=${VK_TOKEN:-}
+      - VK_GROUP_ID=${VK_GROUP_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
