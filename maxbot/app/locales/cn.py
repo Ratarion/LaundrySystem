@@ -68,6 +68,9 @@ CNtexts = {
         "booking_success": "预订成功!\n洗衣机 №{machine_num}\n{start} – {end}",
         "booking_error": "该时段已被其他用户预订!",
         "slot_just_taken": "该时间段刚刚被占用，请选择其他时间。",
+        "quick_book": "⚡ 快速预约",
+        "quick_book_success": "✅ 您已成功预约该空出的位置！\n\n🧺 {m_type} №{m_num}\n📅 日期: {date}\n⏰ 时间: {time}",
+        "slot_taken_by_other": "❌ 该时间段已被其他同学预约！",
 
         # --- 认证 ---
         "none_user": "系统中未找到数据。请联系管理员。",

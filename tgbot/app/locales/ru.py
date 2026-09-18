@@ -55,6 +55,9 @@ RUtexts = {
         "booking_success": "Запись создана!\nМашина №{machine_num}\n{start} – {end}",
         "booking_error": "Слот уже занят другим пользователем!",
         "slot_just_taken": "Этот слот только что заняли. Попробуйте другой.",
+        "quick_book": "⚡ Быстрая запись",
+        "quick_book_success": "✅ <b>Вы успешно записались на освободившееся место!</b>\n\n🧺 {m_type} №{m_num}\n📅 Дата: {date}\n⏰ Время: {time}",
+        "slot_taken_by_other": "❌ Этот слот уже успел занять другой житель!",
 
         
         "confirm_booking_prompt": (

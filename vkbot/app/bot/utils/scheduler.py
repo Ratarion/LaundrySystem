@@ -151,6 +151,8 @@ async def check_confirmations(bot: Bot):
             dorm_id = getattr(db_b, "dormitory_id", None) or (db_b.machine.dormitory_id if getattr(db_b, "machine", None) else None) or getattr(user, "dormitory_id", 1) or 1
             booking_data = {
                 "dormitory_id": dorm_id,
+                "machine_id": getattr(db_b, "inidmachine", None) or (db_b.machine.id if getattr(db_b, "machine", None) else None),
+                "start_iso": db_b.start_time.strftime("%Y%m%d%H%M"),
                 "date_str": db_b.start_time.strftime("%d.%m"),
                 "start_time_str": db_b.start_time.strftime("%H:%M"),
                 "end_time_str": db_b.end_time.strftime("%H:%M"),

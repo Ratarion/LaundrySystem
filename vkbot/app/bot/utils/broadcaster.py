@@ -7,7 +7,7 @@ from vkbottle.bot import Bot
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.text import strip_html
 from app.laundry_repo import get_all_users_with_vk
-from app.bot.keyboards import get_exit_keyboard
+from app.bot.keyboards import get_exit_keyboard, get_slot_freed_keyboard
 
 
 async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_vk_id: int = None):
@@ -49,12 +49,19 @@ async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_vk_id: int 
         )
         notification_text = strip_html(notification_text)
 
+        machine_id = booking_data.get("machine_id")
+        start_iso = booking_data.get("start_iso")
+        if machine_id and start_iso:
+            kb = get_slot_freed_keyboard(machine_id, start_iso, lang)
+        else:
+            kb = get_exit_keyboard(lang)
+
         try:
             await bot.api.messages.send(
                 peer_id=vk_id,
                 message=notification_text,
                 random_id=0,
-                keyboard=get_exit_keyboard(lang),
+                keyboard=kb,
             )
             count += 1
             await asyncio.sleep(0.05)

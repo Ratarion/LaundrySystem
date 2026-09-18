@@ -390,6 +390,102 @@ async def process_exit(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@booking_router.callback_query(F.data.startswith("qb_"))
+async def process_quick_booking(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    if len(parts) < 3:
+        await callback.answer("Ошибка данных", show_alert=True)
+        return
+
+    try:
+        machine_id = int(parts[1])
+        start_str = parts[2]
+        start_time = datetime.strptime(start_str, "%Y%m%d%H%M")
+    except Exception:
+        await callback.answer("Ошибка данных", show_alert=True)
+        return
+
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
+    user = await get_user_by_tg_id(callback.from_user.id)
+    if not user:
+        await callback.answer(t.get("none_user", "Пользователь не найден"), show_alert=True)
+        return
+
+    if start_time <= get_kemerovo_now():
+        await callback.answer(t.get("booking_error", "Время уже прошло"), show_alert=True)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        return
+
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+
+    try:
+        result = await create_booking(
+            user_id=user.id,
+            machine_id=machine_id,
+            start_time=start_time,
+            dormitory_id=dormitory_id
+        )
+
+        end_time = start_time + timedelta(minutes=90)
+        m_obj = result.get('machine')
+        b_obj = result.get('booking')
+        raw_type = getattr(m_obj, "type_machine", "")
+        if raw_type == "Стиральная":
+            m_type = t.get("machine_type_wash", "Стиральная")
+        elif raw_type == "Сушильная":
+            m_type = t.get("machine_type_dry", "Сушильная")
+        else:
+            m_type = raw_type
+
+        success_text = t.get(
+            "quick_book_success",
+            "✅ <b>Вы успешно записались на освободившееся место!</b>\n\n🧺 {m_type} №{m_num}\n📅 Дата: {date}\n⏰ Время: {time}"
+        ).format(
+            m_type=m_type,
+            m_num=getattr(m_obj, "number_machine", ""),
+            date=start_time.strftime("%d.%m.%Y"),
+            time=f"{start_time.strftime('%H:%M')} – {end_time.strftime('%H:%M')}"
+        )
+        if getattr(b_obj, "dormitory_id", None):
+            success_text += f"\n🏢 Общежитие №{b_obj.dormitory_id}"
+
+        if getattr(b_obj, "status", "") == "Подтверждено":
+            success_text += f"\n\n<i>{t.get('booking_confirmed', '✅ Запись подтверждена!')}</i>"
+
+        await callback.answer("✅ Записано!", show_alert=False)
+        await callback.message.edit_text(
+            success_text,
+            parse_mode="HTML",
+            reply_markup=get_exit_keyboard(lang)
+        )
+        await state.clear()
+        return
+
+    except ValueError as e:
+        error_msg = str(e)
+        if error_msg == "Weekly limit reached":
+            await callback.answer(t.get("weekly_limit_reached", "Лимит: 1 запись в неделю!"), show_alert=True)
+        elif error_msg in ["Слот уже занят", "Slot is already taken"]:
+            taken_msg = t.get("slot_taken_by_other", "❌ Этот слот уже успел занять другой житель!")
+            await callback.answer(taken_msg, show_alert=True)
+            try:
+                await callback.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+        elif error_msg in ["Cannot book past time", "Нельзя забронировать прошедшее или текущее время"]:
+            await callback.answer(t.get("booking_error", "Время уже прошло"), show_alert=True)
+            try:
+                await callback.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+        else:
+            await callback.answer(t.get("booking_error", "Ошибка при записи"), show_alert=True)
+        logging.warning(f"Quick booking error for user {user.id}: {e}")
+
+
 # # Отладочный / универсальный логгер колбэков (оставил, но на booking_router)
 # @booking_router.callback_query()
 # async def debug_callback(cb: CallbackQuery):

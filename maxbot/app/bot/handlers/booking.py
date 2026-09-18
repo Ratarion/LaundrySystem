@@ -510,3 +510,84 @@ async def back_to_time(cb: Callback, cursor: fsm.FSMCursor):
 @booking_router.on_button_callback(lambda cb: _is_cmd(cb, "exit"))
 async def exit_to_main(cb: Callback, cursor: fsm.FSMCursor):
     await back_to_sections(cb, cursor)
+
+
+@booking_router.on_button_callback(lambda cb: _is_cmd(cb, "quick_book"))
+async def process_quick_book(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    payload = _get_payload(cb)
+    machine_id = int(payload.get("m_id", 0))
+    start_iso = payload.get("start", "")
+
+    try:
+        start_time = datetime.strptime(start_iso, "%Y%m%d%H%M")
+    except Exception:
+        await cb.answer(notification="Ошибка данных бронирования")
+        return
+
+    user = await get_user_by_max_id(user_id)
+    if not user:
+        await cb.answer(notification=t.get("none_user", "Пользователь не найден"))
+        return
+
+    if start_time <= get_kemerovo_now():
+        await cb.answer(notification=t.get("booking_error", "Время уже прошло"))
+        try:
+            await cb.answer(text="🔔 Время для этой записи уже прошло", keyboard=get_exit_keyboard(lang))
+        except Exception:
+            pass
+        return
+
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+
+    try:
+        result = await create_booking(
+            user_id=user.id,
+            machine_id=machine_id,
+            start_time=start_time,
+            duration_minutes=DURATION_MINUTES,
+            dormitory_id=dormitory_id
+        )
+
+        booking = result["booking"]
+        end_time = start_time + timedelta(minutes=DURATION_MINUTES)
+        m_type_raw = booking.machine.type_machine if getattr(booking, "machine", None) else ""
+        m_type_label = t.get("machine_type_wash", "Стиральная") if m_type_raw == "Стиральная" else t.get("machine_type_dry", "Сушильная")
+
+        success_text = t.get(
+            "quick_book_success",
+            "✅ Вы успешно записались на освободившееся место!\n\n🧺 {m_type} №{m_num}\n📅 Дата: {date}\n⏰ Время: {time}"
+        ).format(
+            m_type=m_type_label,
+            m_num=booking.machine.number_machine if getattr(booking, "machine", None) else "",
+            date=start_time.strftime("%d.%m.%Y"),
+            time=f"{start_time.strftime('%H:%M')} – {end_time.strftime('%H:%M')}"
+        )
+        if getattr(booking, "dormitory_id", None):
+            success_text += f"\n🏢 Общежитие №{booking.dormitory_id}"
+
+        if getattr(booking, "status", "") == "Подтверждено":
+            success_text += f"\n\n{t.get('booking_confirmed', '✅ Запись подтверждена!')}"
+
+        await cb.answer(notification="✅ Запись подтверждена!")
+        await cb.answer(text=success_text, keyboard=get_exit_keyboard(lang))
+        cursor.clear_state()
+        return
+
+    except ValueError as e:
+        error_msg = str(e)
+        if "Лимит" in error_msg or "Weekly limit" in error_msg:
+            await cb.answer(notification=t.get("weekly_limit_reached", "Лимит: 1 запись в неделю!"))
+        elif "Слот уже занят" in error_msg or "Slot is already taken" in error_msg:
+            taken_msg = t.get("slot_taken_by_other", "❌ Этот слот уже успел занять другой житель!")
+            await cb.answer(notification=taken_msg)
+            try:
+                await cb.answer(text="❌ Этот слот уже занят другим жителем.", keyboard=get_exit_keyboard(lang))
+            except Exception:
+                pass
+        elif "Нельзя забронировать" in error_msg or "Cannot book past time" in error_msg:
+            await cb.answer(notification=t.get("booking_error", "Время уже прошло"))
+        else:
+            await cb.answer(notification=str(e))
+        logging.warning(f"[MaxBot] Quick booking error for user {user.id}: {e}")

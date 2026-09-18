@@ -118,15 +118,27 @@ async def create_booking(user_id: int, machine_id: int, start_time: datetime, du
     if start_time <= get_kemerovo_now():
         raise ValueError("Нельзя забронировать прошедшее или текущее время")
 
-    if not await is_slot_free(machine_id, start_time, duration_minutes):
-        raise ValueError("Слот уже занят")
-
     async with async_session() as session:
-        machine_query = select(Machine).where(Machine.id == machine_id)
+        # Блокируем строку машины для предотвращения race condition при параллельной быстрой записи
+        machine_query = select(Machine).where(Machine.id == machine_id).with_for_update()
         result = await session.execute(machine_query)
         machine = result.scalar_one_or_none()
         if not machine:
             raise ValueError("Machine not found")
+
+        # Проверяем занятость слота строго внутри транзакции
+        conflict_query = select(Booking.id).where(
+            Booking.inidmachine == machine_id,
+            Booking.status != 'Отменено',
+            or_(
+                and_(Booking.start_time <= start_time, Booking.end_time > start_time),
+                and_(Booking.start_time < end_time, Booking.end_time >= end_time),
+                and_(Booking.start_time >= start_time, Booking.end_time <= end_time)
+            )
+        ).limit(1)
+        conflict = (await session.execute(conflict_query)).scalar_one_or_none()
+        if conflict:
+            raise ValueError("Слот уже занят")
 
         machine_type = machine.type_machine
         dorm_id = dormitory_id or getattr(machine, "dormitory_id", 1) or 1

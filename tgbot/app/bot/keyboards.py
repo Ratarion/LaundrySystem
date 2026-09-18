@@ -44,6 +44,14 @@ def get_exit_keyboard(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t["exit"], callback_data="exit")]])
 
 
+def get_slot_freed_keyboard(machine_id: int, start_iso: str, lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    btn_text = t.get("quick_book", "⚡ Быстрая запись")
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=btn_text, callback_data=f"qb_{machine_id}_{start_iso}")]
+    ])
+
+
 def get_machines_keyboard(available_machines: list, lang: str) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
     buttons = [

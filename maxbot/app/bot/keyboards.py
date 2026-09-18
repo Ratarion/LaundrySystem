@@ -59,6 +59,14 @@ def get_exit_keyboard(lang: str) -> KeyboardBuilder:
     return kb
 
 
+def get_slot_freed_keyboard(machine_id: int, start_iso: str, lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    btn_text = t.get("quick_book", "⚡ Быстрая запись")
+    kb.row(CallbackButton(btn_text, _payload("quick_book", m_id=machine_id, start=start_iso), intent="positive"))
+    return kb
+
+
 def get_machines_keyboard(available_machines: list, lang: str) -> KeyboardBuilder:
     t = _t(lang)
     kb = KeyboardBuilder()

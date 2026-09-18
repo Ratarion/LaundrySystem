@@ -78,6 +78,16 @@ def get_exit_keyboard(lang: str) -> str:
     return kb.get_json()
 
 
+def get_slot_freed_keyboard(machine_id: int, start_iso: str, lang: str) -> str:
+    t = _t(lang)
+    btn_text = t.get("quick_book", "⚡ Быстрая запись")
+    kb = Keyboard(inline=True).add(
+        Callback(btn_text[:40], {"cmd": "quick_book", "m_id": machine_id, "start": start_iso}),
+        color=KeyboardButtonColor.POSITIVE
+    )
+    return kb.get_json()
+
+
 def get_machines_keyboard(available_machines: list, lang: str) -> str:
     t = _t(lang)
     kb = Keyboard(inline=True)

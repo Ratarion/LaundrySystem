@@ -6,7 +6,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramRetryAfter, TelegramForbiddenError
 from app.bot.utils.translate import ALL_TEXTS
 from app.repositories.laundry_repo import get_all_users_with_tg
-from app.bot.keyboards import get_exit_keyboard  # <--- ДОБАВЬТЕ ИМПОРТ
+from app.bot.keyboards import get_exit_keyboard, get_slot_freed_keyboard
 
 async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_tg_id: int = None):
     dorm_id = booking_data.get("dormitory_id")
@@ -51,12 +51,19 @@ async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_tg_id: int 
             m_num=booking_data.get("machine_num", "")
         )
 
+        machine_id = booking_data.get("machine_id")
+        start_iso = booking_data.get("start_iso")
+        if machine_id and start_iso:
+            reply_markup = get_slot_freed_keyboard(machine_id, start_iso, lang)
+        else:
+            reply_markup = get_exit_keyboard(lang)
+
         try:
             await bot.send_message(
                 chat_id=tg_id, 
                 text=notification_text, 
                 parse_mode="HTML",
-                reply_markup=get_exit_keyboard(lang)  # <--- ДОБАВЛЕНО: Клавиатура с кнопкой
+                reply_markup=reply_markup
             )
             count += 1
             await asyncio.sleep(0.05) 

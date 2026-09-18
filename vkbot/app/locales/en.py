@@ -65,6 +65,9 @@ ENtexts = {
         "booking_success": "Booking created!\nMachine №{machine_num}\n{start} – {end}",
         "booking_error": "The slot is already taken by another user!",
         "slot_just_taken": "Sorry — someone just took this slot. Try another one.",
+        "quick_book": "⚡ Quick booking",
+        "quick_book_success": "✅ You have successfully booked the available slot!\n\n🧺 {m_type} #{m_num}\n📅 Date: {date}\n⏰ Time: {time}",
+        "slot_taken_by_other": "❌ Someone else has already booked this slot!",
 
         # Authentication
         "none_user": "No data was found in the system. Please contact the administrator.",

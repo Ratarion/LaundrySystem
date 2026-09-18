@@ -360,3 +360,94 @@ async def process_exit(event: MessageEvent):
         return
 
     await event.edit_message(t["hello_user"].format(name=user.first_name), keyboard=get_section_keyboard(lang))
+
+
+@booking_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "quick_book"}))
+async def process_quick_book(event: MessageEvent):
+    peer_id = event.peer_id
+    payload = event.payload or {}
+    machine_id = int(payload.get("m_id", 0))
+    start_iso = payload.get("start", "")
+
+    try:
+        start_time = datetime.strptime(start_iso, "%Y%m%d%H%M")
+    except Exception:
+        await event.show_snackbar("Ошибка данных бронирования")
+        return
+
+    lang, t = await get_lang_and_texts(peer_id)
+    user = await get_user_by_vk_id(event.user_id)
+    if not user:
+        await event.show_snackbar(t.get("none_user", "Пользователь не найден"))
+        return
+
+    if start_time <= get_kemerovo_now():
+        await event.show_snackbar(t.get("booking_error", "Время уже прошло"))
+        try:
+            await event.edit_message(event.message or "🔔 Слот освободился", keyboard=get_exit_keyboard(lang))
+        except Exception:
+            pass
+        return
+
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+
+    try:
+        result = await create_booking(
+            user_id=user.id,
+            machine_id=machine_id,
+            start_time=start_time,
+            dormitory_id=dormitory_id
+        )
+
+        end_time = start_time + timedelta(minutes=DURATION_MINUTES)
+        m_obj = result.get('machine')
+        b_obj = result.get('booking')
+        raw_type = getattr(m_obj, "type_machine", "")
+        if raw_type == "Стиральная":
+            m_type = t.get("machine_type_wash", "Стиральная")
+        elif raw_type == "Сушильная":
+            m_type = t.get("machine_type_dry", "Сушильная")
+        else:
+            m_type = raw_type
+
+        success_text = t.get(
+            "quick_book_success",
+            "✅ Вы успешно записались на освободившееся место!\n\n🧺 {m_type} №{m_num}\n📅 Дата: {date}\n⏰ Время: {time}"
+        ).format(
+            m_type=m_type,
+            m_num=getattr(m_obj, "number_machine", ""),
+            date=start_time.strftime("%d.%m.%Y"),
+            time=f"{start_time.strftime('%H:%M')} – {end_time.strftime('%H:%M')}"
+        )
+        if getattr(b_obj, "dormitory_id", None):
+            success_text += f"\n🏢 Общежитие №{b_obj.dormitory_id}"
+
+        if getattr(b_obj, "status", "") == "Подтверждено":
+            success_text += f"\n\n{t.get('booking_confirmed', '✅ Запись подтверждена!')}"
+
+        await event.show_snackbar("✅ Запись подтверждена!")
+        await event.edit_message(success_text, keyboard=get_exit_keyboard(lang))
+        await clear_state(peer_id)
+        await update_state_data(peer_id, lang=lang)
+        return
+
+    except ValueError as e:
+        error_msg = str(e)
+        if error_msg == "Weekly limit reached":
+            await event.show_snackbar(t.get("weekly_limit_reached", "Лимит: 1 запись в неделю!"))
+        elif error_msg in ["Слот уже занят", "Slot is already taken"]:
+            taken_msg = t.get("slot_taken_by_other", "❌ Этот слот уже успел занять другой житель!")
+            await event.show_snackbar(taken_msg)
+            try:
+                await event.edit_message(event.message or "🔔 Слот освободился", keyboard=get_exit_keyboard(lang))
+            except Exception:
+                pass
+        elif error_msg in ["Нельзя забронировать прошедшее или текущее время", "Cannot book past time"]:
+            await event.show_snackbar(t.get("booking_error", "Время уже прошло"))
+            try:
+                await event.edit_message(event.message or "🔔 Слот освободился", keyboard=get_exit_keyboard(lang))
+            except Exception:
+                pass
+        else:
+            await event.show_snackbar(t.get("booking_error", "Ошибка при записи"))
+        logging.warning(f"Quick booking error for VK user {user.id}: {e}")
