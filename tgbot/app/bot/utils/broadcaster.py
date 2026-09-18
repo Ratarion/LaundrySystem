@@ -21,8 +21,11 @@ async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_tg_id: int 
             continue
 
         # Выбор локали
-        lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
-        t = ALL_TEXTS.get(lang) or ALL_TEXTS.get("RU")
+        raw_lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
+        lang = str(raw_lang).strip().upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        t = ALL_TEXTS[lang]
 
         # 1. Исправление типа машины (база хранит "Стиральная"/"Сушильная")
         raw_type = booking_data.get("machine_type", "")

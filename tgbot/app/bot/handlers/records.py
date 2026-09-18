@@ -14,7 +14,7 @@ records_router = Router()
 
 @records_router.callback_query(F.data == "show_records")
 async def show_records(callback: CallbackQuery, state: FSMContext):
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
     await state.set_state(DisplayRecords.waiting_for_display)
     user = await get_user_by_tg_id(callback.from_user.id)
     

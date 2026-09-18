@@ -12,7 +12,7 @@ MAX_REPORT_LENGTH = 500  # Лимит символов (можно измени�
 
 @report_router.callback_query(F.data == "report")
 async def report_problem(callback: CallbackQuery, state: FSMContext):
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
     # Добавляем кнопку "Назад" к сообщению с просьбой описать проблему
     await callback.message.edit_text(
         t.get("report_prompt", "Укажите номер и тип машинки и опишите проблему:"), 
@@ -23,7 +23,7 @@ async def report_problem(callback: CallbackQuery, state: FSMContext):
 
 @report_router.message(Report.waiting_for_report)
 async def process_report(message: Message, state: FSMContext, bot: Bot):
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
 
     user = await get_user_by_tg_id(message.from_user.id)
  

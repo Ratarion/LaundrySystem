@@ -6,6 +6,7 @@ services:
     env_file:
       - .env
     environment:
+      - TZ=${TZ:-Asia/Novokuznetsk}
       - BOT_TOKEN=${BOT_TOKEN:-}
       - HOST=${HOST:-postgres}
       - PORT=${PORT:-5432}

@@ -22,7 +22,7 @@ cancel_record_router = Router()
 @cancel_record_router.callback_query(F.data == "remove_records")
 async def start_cancel_process(callback: CallbackQuery, state: FSMContext):
     # (Этот код остается без изменений - показ списка записей)
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
     user = await get_user_by_tg_id(callback.from_user.id)
     
     if not user:
@@ -45,7 +45,7 @@ async def start_cancel_process(callback: CallbackQuery, state: FSMContext):
 @cancel_record_router.callback_query(F.data.startswith("cancel_"), CancelRecord.waiting_for_cancel)
 async def process_cancel_booking(callback: CallbackQuery, state: FSMContext, bot: Bot):
     booking_id = int(callback.data.split("_")[-1])
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
     
     # 1. Сначала получаем данные о бронировании, пока не удалили
     booking = await get_booking_by_id(booking_id)

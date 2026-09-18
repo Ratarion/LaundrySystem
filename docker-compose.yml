@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: ${DB_NAME:-layndaru_db}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      TZ: ${TZ:-Asia/Novokuznetsk}
     ports:
       # Порт 5432 открыт для подключения зарубежного Telegram-бота
       - "5432:5432"
@@ -28,6 +29,7 @@ services:
     volumes:
       - ./webpanel.local:/var/www/html
     environment:
+      - TZ=${TZ:-Asia/Novokuznetsk}
       - APACHE_RUN_USER=www-data
       - APACHE_RUN_GROUP=www-data
       - DB_HOST=postgres
@@ -49,6 +51,7 @@ services:
     container_name: layndaru-maxbot
     restart: unless-stopped
     environment:
+      - TZ=${TZ:-Asia/Novokuznetsk}
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
       - MAX_TOKEN=${MAX_TOKEN:-}
     depends_on:
@@ -60,6 +63,7 @@ services:
     container_name: layndaru-vkbot
     restart: unless-stopped
     environment:
+      - TZ=${TZ:-Asia/Novokuznetsk}
       - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
       - VK_TOKEN=${VK_TOKEN:-}
       - VK_GROUP_ID=${VK_GROUP_ID:-}

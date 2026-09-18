@@ -18,6 +18,23 @@ auth_router = Router()
 
 @auth_router.message(CommandStart())
 async def cmd_start_initial(message: Message, state: FSMContext):
+    tg_id = message.from_user.id
+    user = await get_user_by_tg_id(tg_id)
+    
+    # Если пользователь уже зарегистрирован и у него есть язык в БД:
+    if user and user.language:
+        lang = user.language.upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        await state.update_data(lang=lang)
+        t = ALL_TEXTS[lang]
+        name = user.first_name or ""
+        await message.answer(
+            t['hello_user'].replace('{name}', name),
+            reply_markup=get_section_keyboard(lang)
+        )
+        return
+
     data = await state.get_data()
     # Если язык еще не выбран, предлагаем выбрать
     if 'lang' not in data:
@@ -31,13 +48,15 @@ async def cmd_start_initial(message: Message, state: FSMContext):
 @auth_router.callback_query(F.data.startswith("lang_"))
 async def set_language(callback: CallbackQuery, state: FSMContext):
     # 1. Получаем выбранный язык
-    lang = callback.data.split("_")[1]
+    lang = callback.data.split("_")[1].upper()
+    if lang not in ALL_TEXTS:
+        lang = "RU"
     
     # 2. Обновляем состояние
     await state.update_data(lang=lang)
     
     # 3. Получаем тексты для выбранного языка
-    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    t = ALL_TEXTS[lang]
     
     # 4. Проверяем, кто нажал кнопку (пользователь)
     tg_id = callback.from_user.id

@@ -16,12 +16,8 @@ async def process_confirm(callback: CallbackQuery, state: FSMContext = None):
         await callback.answer("Ошибка формата данных", show_alert=True)
         return
 
-    # Получаем язык из FSM (если есть) или RU по умолчанию
-    if state:
-        lang, t = await get_lang_and_texts(state)
-    else:
-        lang = "RU"
-        t = ALL_TEXTS["RU"]
+    # Получаем язык из FSM или БД пользователя
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
 
     booking = await get_booking_by_id(booking_id)
 

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS residents (
     tg_id BIGINT,
     vk_id BIGINT,
     max_id BIGINT,
-    language TEXT DEFAULT 'ru',
+    language TEXT DEFAULT 'RU',
     dormitory_id INTEGER REFERENCES dormitories(id) ON DELETE SET NULL DEFAULT 1,
     inidroom INTEGER REFERENCES rooms(idroom) ON DELETE SET NULL,
     idcards INTEGER UNIQUE,

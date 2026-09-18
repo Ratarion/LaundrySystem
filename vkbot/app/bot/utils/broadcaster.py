@@ -22,8 +22,11 @@ async def broadcast_slot_freed(bot: Bot, booking_data: dict, exclude_vk_id: int 
         if exclude_vk_id is not None and vk_id == exclude_vk_id:
             continue
 
-        lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
-        t = ALL_TEXTS.get(lang) or ALL_TEXTS.get("RU")
+        raw_lang = getattr(u, "language", None) or (u[1] if isinstance(u, (tuple, list)) and len(u) > 1 else "RU") or "RU"
+        lang = str(raw_lang).strip().upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        t = ALL_TEXTS[lang]
 
         raw_type = booking_data.get("machine_type", "")
         if raw_type == "Стиральная":

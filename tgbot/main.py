@@ -1,6 +1,14 @@
+import os
+import time
 import aiohttp
 import asyncio
 import logging
+
+# Установка часового пояса Кемерово (КузГТУ, UTC+7)
+os.environ['TZ'] = os.getenv('TZ', 'Asia/Novokuznetsk')
+if hasattr(time, 'tzset'):
+    time.tzset()
+
 
 
 from aiogram import Bot, Dispatcher

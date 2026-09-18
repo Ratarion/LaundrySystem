@@ -40,9 +40,21 @@ async def cmd_start_initial(message: Message):
     на случай, если пользователь просто напишет "начать"/"start" вручную.
     """
     peer_id = message.peer_id
-    data = await get_state_data(peer_id)
+    user_id = message.from_id
+    user = await get_user_by_vk_id(user_id)
+    
+    # Если пользователь уже зарегистрирован и у него есть язык в БД:
+    if user and user.language:
+        lang = user.language.upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        await update_state_data(peer_id, {"lang": lang})
+        t = ALL_TEXTS[lang]
+        await _send_main_menu(peer_id, user, lang, t)
+        return
 
-    if "lang" not in data:
+    data = await get_state_data(peer_id)
+    if not isinstance(data, dict) or "lang" not in data:
         await message.answer(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
         await _cmd_start_auth(peer_id, message.from_id)
@@ -50,7 +62,7 @@ async def cmd_start_initial(message: Message):
 
 async def _cmd_start_auth(peer_id: int, user_id: int):
     existing_user = await get_user_by_vk_id(user_id)
-    lang, t = await get_lang_and_texts(peer_id)
+    lang, t = await get_lang_and_texts(peer_id, user_id=user_id, user=existing_user)
 
     if existing_user:
         if existing_user.language != lang:
@@ -63,10 +75,13 @@ async def _cmd_start_auth(peer_id: int, user_id: int):
 
 @auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "lang"}))
 async def set_language(event: MessageEvent):
-    lang = event.payload.get("lang", "RU")
-    await update_state_data(event.peer_id, lang=lang)
+    raw_lang = event.payload.get("lang", "RU")
+    lang = str(raw_lang).strip().upper()
+    if lang not in ALL_TEXTS:
+        lang = "RU"
+    await update_state_data(event.peer_id, {"lang": lang})
 
-    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    t = ALL_TEXTS[lang]
     user = await get_user_by_vk_id(event.user_id)
 
     if user:
@@ -75,8 +90,7 @@ async def set_language(event: MessageEvent):
     else:
         await event.edit_message(t["auth"])
         await set_state(event.peer_id, Auth.waiting_for_fio)
-        # передаём выбранный язык дальше, edit_message его не сохраняет
-        await update_state_data(event.peer_id, lang=lang)
+        await update_state_data(event.peer_id, {"lang": lang})
 
 
 @auth_labeler.message(StateRule(Auth.waiting_for_fio))

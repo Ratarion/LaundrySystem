@@ -71,10 +71,10 @@ async def check_confirmations(bot: Bot):
             if not user or not getattr(user, "tg_id", None):
                 continue
 
-            lang = getattr(user, "language", None)
-            t = ALL_TEXTS.get(lang) if lang else None
-            if not t:
-                t = ALL_TEXTS.get("RU") or ALL_TEXTS.get("ENG") or list(ALL_TEXTS.values())[0]
+            lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
+            if lang not in ALL_TEXTS:
+                lang = "RU"
+            t = ALL_TEXTS[lang]
 
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=t.get("confirm_btn", "Confirm"), callback_data=f"confirm_{db_b.id}")]
@@ -161,8 +161,10 @@ async def check_confirmations(bot: Bot):
             }
 
             if user and getattr(user, "tg_id", None):
-                lang = getattr(user, "language", None) or "RU"
-                t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+                lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
+                if lang not in ALL_TEXTS:
+                    lang = "RU"
+                t = ALL_TEXTS[lang]
 
                 raw_type = booking_data["machine_type"]
                 if raw_type == "Стиральная":
