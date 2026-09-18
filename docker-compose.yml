@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     environment:
       - TZ=${TZ:-Asia/Novokuznetsk}
-      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}}
       - MAX_TOKEN=${MAX_TOKEN:-}
     depends_on:
       postgres:
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
     environment:
       - TZ=${TZ:-Asia/Novokuznetsk}
-      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-layndaru_db}}
       - VK_TOKEN=${VK_TOKEN:-}
       - VK_GROUP_ID=${VK_GROUP_ID:-}
     depends_on:

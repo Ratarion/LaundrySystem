@@ -13,8 +13,13 @@ async def get_lang_and_texts(user_id: int, cursor=None) -> Tuple[str, dict]:
             lang = data["lang"]
             return lang, ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
 
-    user = await get_user_by_max_id(user_id)
-    if user and getattr(user, "language", None):
-        lang = user.language
+    if not lang or lang not in ALL_TEXTS:
+        user = await get_user_by_max_id(user_id)
+        if user and getattr(user, "language", None):
+            lang = user.language
 
-    return lang, ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    lang = (str(lang).strip() if lang else "RU").upper()
+    if lang not in ALL_TEXTS:
+        lang = "RU"
+
+    return lang, ALL_TEXTS[lang]

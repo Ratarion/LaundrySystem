@@ -30,6 +30,11 @@ async def main():
     await init_db()
     logging.info("[MaxBot] База данных подключена успешно")
 
+    if not bot:
+        logging.warning("[MaxBot] MAX_TOKEN не указан в .env. MaxBot находится в режиме ожидания (idle).")
+        while True:
+            await asyncio.sleep(3600)
+
     bot.add_router(auth_router)
     bot.add_router(booking_router)
     bot.add_router(records_router)
