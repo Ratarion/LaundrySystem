@@ -120,14 +120,8 @@ INSERT INTO rooms (idroom) VALUES
 ON CONFLICT (idroom) DO NOTHING;
 
 -- Учётные записи администраторов и техников (RBAC с разделением по общежитиям)
--- Председатель студгородка: логин "admin", пароль "admin123" (роль 1, все общежития)
--- Главный техник: логин "tech", пароль "tech123" (роль 2, все общежития)
--- Общежитие №3:
---   Староста: логин "admin_dorm3", пароль "dorm3_admin2026" (роль 1, общ 3)
---   Техник / Староста этажа: логин "tech_dorm3", пароль "dorm3_tech2026" (роль 2, общ 3)
--- Общежитие №4:
---   Староста: логин "admin_dorm4", пароль "dorm4_admin2026" (роль 1, общ 4)
---   Техник / Староста этажа: логин "tech_dorm4", пароль "dorm4_tech2026" (роль 2, общ 4)
+-- Пароли хранятся в виде криптографических хешей bcrypt (PASSWORD_DEFAULT)
+-- Смена пароля доступна через панель управления /change-password
 INSERT INTO administrators (username, password_hash, role, dormitory_id) VALUES 
 ('admin',       '$2y$10$z1pKAB5k2yjcF4bzsKNPfunJqH99u6vPpONiz2lNW/I.OQ.D5yeNG', 1, NULL),
 ('tech',        '$2y$10$WqmoZ63X6asL3Fy1OPbusu4gtc7G7uSBrb6WTJY5qPxTrNmyPnJ.G', 2, NULL),
