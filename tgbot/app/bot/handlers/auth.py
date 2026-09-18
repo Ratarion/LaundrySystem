@@ -1,6 +1,6 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from app.bot.keyboards import kb_welcom, get_section_keyboard
@@ -175,3 +175,12 @@ async def process_change_language_btn(callback: CallbackQuery, state: FSMContext
         reply_markup=kb_welcom
     )
     await callback.answer()
+
+
+@auth_router.message(F.text.lower().in_({"/site", "сайт", "/web", "панель", "/panel"}))
+async def cmd_open_site(message: Message, state: FSMContext):
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
+    url = "http://webpanel.beget.tech"
+    btn_text = t.get("web_panel", "🌐 Перейти на сайт")
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=btn_text, url=url)]])
+    await message.answer(f"🌐 <b>{btn_text}</b>:\n{url}", reply_markup=kb, parse_mode="HTML")

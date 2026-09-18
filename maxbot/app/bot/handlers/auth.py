@@ -160,3 +160,15 @@ async def process_id_card_auth(message: Message, cursor: fsm.FSMCursor):
 @auth_router.on_button_callback(lambda cb: _is_cmd(cb, "change_language"))
 async def process_change_language_btn(cb: Callback, cursor: fsm.FSMCursor):
     await cb.answer(text=ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+
+
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in ["/site", "сайт", "/web", "панель", "/panel"])
+async def cmd_open_site_max(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    url = "http://webpanel.beget.tech"
+    btn_text = t.get("web_panel", "🌐 Перейти на сайт")
+    from aiomax.buttons import KeyboardBuilder, LinkButton
+    kb = KeyboardBuilder()
+    kb.row(LinkButton(btn_text, url))
+    await message.reply(text=f"🌐 {btn_text}:\n{url}", keyboard=kb)

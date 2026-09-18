@@ -15,7 +15,7 @@ Payload кнопок — обычный JSON-словарь с ключом "cmd
 """
 from datetime import datetime, timedelta
 
-from vkbottle import Keyboard, Callback, KeyboardButtonColor
+from vkbottle import Keyboard, Callback, KeyboardButtonColor, OpenLink
 
 from app.locales import ru, en, cn
 
@@ -62,6 +62,8 @@ def get_section_keyboard(lang: str) -> str:
         .add(Callback(t["show_records"], {"cmd": "show_records"}), color=KeyboardButtonColor.SECONDARY)
         .row()
         .add(Callback(t["cancel_record"], {"cmd": "remove_records"}), color=KeyboardButtonColor.SECONDARY)
+        .row()
+        .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
         .add(Callback(t["change_language"], {"cmd": "change_language"}), color=KeyboardButtonColor.SECONDARY)
         .row()

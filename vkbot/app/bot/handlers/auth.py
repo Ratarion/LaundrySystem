@@ -153,3 +153,15 @@ async def process_id_card_auth(message: Message):
 async def process_change_language_btn(event: MessageEvent):
     """Кнопка 'Сменить язык' из главного меню (не привязана к конкретному состоянию)."""
     await event.edit_message(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+
+
+@auth_labeler.message(
+    VBMLRule(["сайт", "Сайт", "/site", "site", "/web", "web", "панель", "Панель", "/panel"])
+)
+async def cmd_open_site(message: Message):
+    lang, t = await get_lang_and_texts(message.peer_id)
+    url = "http://webpanel.beget.tech"
+    btn_text = t.get("web_panel", "🌐 Перейти на сайт")
+    from vkbottle import Keyboard, OpenLink
+    kb = Keyboard(inline=True).add(OpenLink(url, btn_text)).get_json()
+    await message.answer(f"🌐 {btn_text}:\n{url}", keyboard=kb)

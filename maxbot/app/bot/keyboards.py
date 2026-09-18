@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from typing import List
 
-from aiomax.buttons import KeyboardBuilder, CallbackButton
+from aiomax.buttons import KeyboardBuilder, CallbackButton, LinkButton
 
 from app.locales import ru, en, cn
 
@@ -37,6 +37,7 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     kb.row(CallbackButton(t["record_laundry"], _payload("record"), intent="positive"))
     kb.row(CallbackButton(t["show_records"], _payload("show_records"), intent="default"))
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
+    kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
     kb.row(CallbackButton(t["change_language"], _payload("change_language"), intent="default"))
     kb.row(CallbackButton(t["report_in_admin"], _payload("report"), intent="negative"))
     return kb

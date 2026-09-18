@@ -10,6 +10,7 @@ CNtexts = {
         "report_too_long": "消息太长，请缩短后重新发送。",
         "show_records": "查看我的预订",
         "cancel_record": "取消预订",
+        "web_panel": "🌐 访问网页版",
         "exit": "退出",
         "back": "返回",
         "change_language": "🌐 更改语言",

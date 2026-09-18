@@ -9,6 +9,7 @@ CNtexts = {
         "report_prompt": "指定机器的数量和类型并描述问题。:",
         "show_records": "查看我的预订",
         "cancel_record": "取消预订",
+        "web_panel": "🌐 访问网页版",
         "exit": "退出",
         "back": "返回",
         "change_language": "🌐 更改语言",

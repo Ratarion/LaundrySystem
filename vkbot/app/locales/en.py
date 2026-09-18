@@ -10,6 +10,7 @@ ENtexts = {
         "report_too_long": "Message is too long. Please shorten it and send again.",
         "show_records": "Show my bookings",
         "cancel_record": "Cancel booking",
+        "web_panel": "🌐 Open Website",
         "exit": "Exit",
         "back": "Back",
         "change_language": "🌐 Change language",
