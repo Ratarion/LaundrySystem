@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
@@ -9,6 +9,8 @@ from app.bot.keyboards import (
     get_notifications_keyboard,
     get_settings_keyboard,
     get_language_keyboard,
+    get_start_reply_keyboard,
+    get_main_reply_keyboard,
 )
 from app.repositories.laundry_repo import (
     get_user_by_tg_id,
@@ -24,7 +26,22 @@ from app.bot.utils.translate import get_lang_and_texts, ALL_TEXTS
 
 auth_router = Router()
 
+async def send_main_menu(message_or_cb, user, lang: str, t: dict):
+    name = user.first_name if hasattr(user, 'first_name') and user.first_name else ""
+    target = message_or_cb.message if isinstance(message_or_cb, CallbackQuery) else message_or_cb
+    await target.answer(
+        t.get("quick_access_menu_hint", "Меню быстрого доступа активировано ⬇️"),
+        reply_markup=get_main_reply_keyboard(lang)
+    )
+    await target.answer(
+        t['hello_user'].replace('{name}', name),
+        reply_markup=get_section_keyboard(lang)
+    )
+
 @auth_router.message(CommandStart())
+@auth_router.message(F.text.in_({
+    "🚀 Начать", "Начать", "начать", "start", "/start", "старт", "Старт", "🚀 Start"
+}))
 async def cmd_start_initial(message: Message, state: FSMContext):
     tg_id = message.from_user.id
     user = await get_user_by_tg_id(tg_id)
@@ -36,16 +53,16 @@ async def cmd_start_initial(message: Message, state: FSMContext):
             lang = "RU"
         await state.update_data(lang=lang)
         t = ALL_TEXTS[lang]
-        name = user.first_name or ""
-        await message.answer(
-            t['hello_user'].replace('{name}', name),
-            reply_markup=get_section_keyboard(lang)
-        )
+        await send_main_menu(message, user, lang, t)
         return
 
     data = await state.get_data()
     # Если язык еще не выбран, предлагаем выбрать
     if 'lang' not in data:
+        await message.answer(
+            "Нажмите «🚀 Начать» или выберите язык для продолжения:",
+            reply_markup=get_start_reply_keyboard()
+        )
         await message.answer(
             ALL_TEXTS["RU"]["welcome_lang_choice"],
             reply_markup=kb_welcom
@@ -77,13 +94,7 @@ async def set_language(callback: CallbackQuery, state: FSMContext):
         # --- ЕСЛИ ПОЛЬЗОВАТЕЛЬ УЖЕ ЕСТЬ В БАЗЕ ---
         # Обновляем язык в базе данных
         await update_user_language(tg_id, lang)
-        
-        # Отправляем главное меню на новом языке
-        # Используем .replace, как у вас принято в проекте, или .format
-        await callback.message.answer(
-            t['hello_user'].replace('{name}', user.first_name),
-            reply_markup=get_section_keyboard(lang)
-        )
+        await send_main_menu(callback, user, lang, t)
     else:
         # --- ЕСЛИ ЭТО НОВЫЙ ПОЛЬЗОВАТЕЛЬ (регистрация) ---
         # Запускаем процедуру авторизации
@@ -98,15 +109,9 @@ async def cmd_start_auth(message: Message, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
 
     if existing_user:
-        # Если пользователь уже есть, но в State выбран другой язык, можно обновить его в базе
-        # (Это опционально, но удобно: если юзер нажал /start и выбрал язык заново)
         if existing_user.language != lang:
              await update_user_language(tg_id, lang)
-        
-        await message.answer(
-            t['hello_user'].format(name=existing_user.first_name),
-            reply_markup=get_section_keyboard(lang)
-        )
+        await send_main_menu(message, existing_user, lang, t)
     else:
         await message.answer(t["auth"])
         await state.set_state(Auth.waiting_for_fio)
@@ -128,14 +133,9 @@ async def process_fio_auth(message: Message, state: FSMContext):
             
         # ✅ ПЕРЕДАЕМ ЯЗЫК В БАЗУ
         await activate_resident_user(resident.id, message.from_user.id, language=lang)
-        
-        await message.answer(
-            f"{t['hello_user'].replace('{name}', resident.first_name)}",
-            reply_markup=get_section_keyboard(lang)
-        )
         await state.clear()
-        # Важно оставить язык в state, чтобы сессия продолжилась на нужном языке
-        await state.update_data(lang=lang) 
+        await state.update_data(lang=lang)
+        await send_main_menu(message, resident, lang, t)
     else:
         await message.answer(t["seek_cards"])
         await state.set_state(Auth.waiting_for_id_card)
@@ -157,15 +157,45 @@ async def process_id_card_auth(message: Message, state: FSMContext):
             
         # ✅ ПЕРЕДАЕМ ЯЗЫК В БАЗУ
         await activate_resident_user(resident.id, message.from_user.id, language=lang)
-        
-        await message.answer(
-            f"{t['hello_user'].replace('{name}', resident.first_name)}",
-            reply_markup=get_section_keyboard(lang)
-        )
         await state.clear()
         await state.update_data(lang=lang)
+        await send_main_menu(message, resident, lang, t)
     else:
         await message.answer(t["none_user"])
+
+
+# --- Обработчики кнопок нижней панели (Reply Keyboard) и команд ---
+@auth_router.message(Command("menu"))
+@auth_router.message(F.text.in_({
+    "🏠 Главное меню", "🏠 Main Menu", "🏠 主菜单",
+    "/menu", "главное меню", "Главное меню"
+}))
+async def reply_show_main_menu(message: Message, state: FSMContext):
+    await state.clear()
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
+    await state.update_data(lang=lang)
+    user = await get_user_by_tg_id(message.from_user.id)
+    if user:
+        await send_main_menu(message, user, lang, t)
+    else:
+        await cmd_start_initial(message, state)
+
+
+@auth_router.message(Command("settings"))
+@auth_router.message(F.text.in_({
+    "⚙️ Настройки", "⚙️ Settings", "⚙️ 设置",
+    "/settings", "настройки", "Настройки"
+}))
+async def reply_show_settings(message: Message, state: FSMContext):
+    await state.clear()
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
+    await state.update_data(lang=lang)
+    text = t.get("settings_title", "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:")
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=get_settings_keyboard(lang)
+    )
 
 
 @auth_router.callback_query(F.data == "settings_menu")

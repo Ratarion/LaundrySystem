@@ -7,6 +7,8 @@ from app.bot.keyboards import (
     get_section_keyboard,
     get_notifications_keyboard,
     get_settings_keyboard,
+    get_start_reply_keyboard,
+    get_main_reply_keyboard,
 )
 from app.bot.loader import api
 from app.laundry_repo import (
@@ -28,6 +30,15 @@ auth_labeler = BotLabeler()
 async def _send_main_menu(peer_id: int, user, lang: str, t: dict, edit_event: MessageEvent | None = None):
     text = t["hello_user"].format(name=user.first_name)
     kb = get_section_keyboard(lang)
+    reply_kb = get_main_reply_keyboard(lang)
+    
+    # Отправляем нижнюю панель Reply Keyboard под полем ввода
+    await api.messages.send(
+        peer_id=peer_id,
+        message=t.get("quick_access_menu_hint", "Меню быстрого доступа активировано ⬇️"),
+        random_id=0,
+        keyboard=reply_kb
+    )
     if edit_event is not None:
         await edit_event.edit_message(text, keyboard=kb)
     else:
@@ -37,7 +48,7 @@ async def _send_main_menu(peer_id: int, user, lang: str, t: dict, edit_event: Me
 @auth_labeler.message(
     OrRule(
         PayloadContainsRule({"command": "start"}),
-        VBMLRule(["начать", "Начать", "/start", "start", "Start"]),
+        VBMLRule(["начать", "Начать", "🚀 Начать", "🚀 начать", "/start", "start", "Start", "старт", "Старт"]),
     )
 )
 async def cmd_start_initial(message: Message):
@@ -62,6 +73,12 @@ async def cmd_start_initial(message: Message):
 
     data = await get_state_data(peer_id)
     if not isinstance(data, dict) or "lang" not in data:
+        await api.messages.send(
+            peer_id=peer_id,
+            message="Нажмите «🚀 Начать» или выберите язык для продолжения:",
+            random_id=0,
+            keyboard=get_start_reply_keyboard()
+        )
         await message.answer(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
         await _cmd_start_auth(peer_id, message.from_id)
@@ -203,3 +220,109 @@ async def cmd_open_site(message: Message):
     from vkbottle import Keyboard, OpenLink
     kb = Keyboard(inline=True).add(OpenLink(url, btn_text)).get_json()
     await message.answer(f"🌐 {btn_text}:\n{url}", keyboard=kb)
+
+
+# --- Обработчики кнопок нижней панели (Reply Keyboard) ---
+@auth_labeler.message(
+    VBMLRule([
+        "🏠 Главное меню", "🏠 Main Menu", "🏠 主菜单",
+        "главное меню", "Главное меню", "/menu", "menu"
+    ])
+)
+async def reply_show_main_menu(message: Message):
+    peer_id = message.peer_id
+    user_id = message.from_id
+    user = await get_user_by_vk_id(user_id)
+    lang, t = await get_lang_and_texts(peer_id, user_id=user_id, user=user)
+    if user:
+        await _send_main_menu(peer_id, user, lang, t)
+    else:
+        await cmd_start_initial(message)
+
+
+@auth_labeler.message(
+    VBMLRule([
+        "🧺 Записаться", "🧺 Book Laundry", "🧺 预约洗衣",
+        "записаться", "Записаться", "/book"
+    ])
+)
+async def reply_book(message: Message):
+    peer_id = message.peer_id
+    user_id = message.from_id
+    user = await get_user_by_vk_id(user_id)
+    lang, t = await get_lang_and_texts(peer_id, user_id=user_id, user=user)
+    if not user:
+        await message.answer(t["none_user"])
+        return
+    if getattr(user, "is_banned", False):
+        await message.answer(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
+        return
+    from app.bot.keyboards import get_machine_type_keyboard
+    await api.messages.send(
+        peer_id=peer_id,
+        message=t["select_machine_type"],
+        random_id=0,
+        keyboard=get_machine_type_keyboard(lang)
+    )
+
+
+@auth_labeler.message(
+    VBMLRule([
+        "📋 Мои записи", "📋 My Bookings", "📋 我的预约",
+        "мои записи", "Мои записи", "/records"
+    ])
+)
+async def reply_show_records(message: Message):
+    peer_id = message.peer_id
+    user_id = message.from_id
+    user = await get_user_by_vk_id(user_id)
+    lang, t = await get_lang_and_texts(peer_id, user_id=user_id, user=user)
+    if not user:
+        await message.answer(t["none_user"])
+        return
+    from app.laundry_repo import get_user_bookings
+    bookings = await get_user_bookings(user.id)
+    from app.bot.keyboards import get_back_to_sections_keyboard
+    back_kb = get_back_to_sections_keyboard(lang)
+    if not bookings:
+        no_bookings_text = t.get("no_user_bookings", "У вас нет записей.")
+        await api.messages.send(peer_id=peer_id, message=no_bookings_text, random_id=0, keyboard=back_kb)
+        return
+    lines = []
+    machine_label = t.get("machine", "Машина")
+    for b in bookings[:20]:
+        start_str = b.start_time.strftime("%d.%m.%Y %H:%M") if b.start_time else "—"
+        end_str = b.end_time.strftime("%H:%M") if b.end_time else "—"
+        machine_num = b.machine.number_machine if getattr(b, "machine", None) else "—"
+        raw_type = b.machine.type_machine if getattr(b, "machine", None) else "—"
+        if raw_type == "Стиральная":
+            machine_type = t.get("machine_type_wash", "Стиральная")
+        elif raw_type == "Сушильная":
+            machine_type = t.get("machine_type_dry", "Сушильная")
+        else:
+            machine_type = raw_type
+        dorm_text = f" • Общ. №{b.dormitory_id}" if getattr(b, "dormitory_id", None) else ""
+        lines.append(f"• {start_str} - {end_str}{dorm_text} • {machine_label} №{machine_num} ({machine_type})")
+    title = t.get("show_records_title", "Ваши записи:")
+    text = title + "\n\n" + "\n".join(lines)
+    await api.messages.send(peer_id=peer_id, message=text, random_id=0, keyboard=back_kb)
+
+
+@auth_labeler.message(
+    VBMLRule([
+        "⚙️ Настройки", "⚙️ Settings", "⚙️ 设置",
+        "настройки", "Настройки", "/settings"
+    ])
+)
+async def reply_show_settings(message: Message):
+    peer_id = message.peer_id
+    user_id = message.from_id
+    user = await get_user_by_vk_id(user_id)
+    lang, t = await get_lang_and_texts(peer_id, user_id=user_id, user=user)
+    text = t.get("settings_title", "⚙️ Настройки:\n\nВыберите нужный раздел:")
+    await api.messages.send(
+        peer_id=peer_id,
+        message=text,
+        random_id=0,
+        keyboard=get_settings_keyboard(lang)
+    )

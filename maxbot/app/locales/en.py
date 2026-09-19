@@ -97,6 +97,14 @@ ENtexts = {
         "other_tg_id": "This user is already registered with another account.",
         "seek_cards": "No user with this name was found. Enter your student ID number:",
         "auth": "Enter your full name (surname, first name, and patronymic) to log in",
-        "write_FIO": "Please enter your full name (at least 2 words)."
+        "write_FIO": "Please enter your full name (at least 2 words).",
+
+        # --- Quick access reply panel ---
+        "reply_btn_menu": "🏠 Main Menu",
+        "reply_btn_book": "🧺 Book Laundry",
+        "reply_btn_my_records": "📋 My Bookings",
+        "reply_btn_settings": "⚙️ Settings",
+        "reply_btn_start": "🚀 Start",
+        "quick_access_menu_hint": "Quick access menu activated ⬇️"
     }
 }

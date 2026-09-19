@@ -95,5 +95,13 @@ CNtexts = {
         "seek_cards": "未找到该姓名的用户。请输入您的学生证/成绩册号码：",
         "auth": "请输入您的全名（姓、名）以进行授权：",
         "write_FIO": "请输入您的全名（至少两个词）。",
+
+        # --- 快捷底部操作面板 ---
+        "reply_btn_menu": "🏠 主菜单",
+        "reply_btn_book": "🧺 预约洗衣",
+        "reply_btn_my_records": "📋 我的预约",
+        "reply_btn_settings": "⚙️ 设置",
+        "reply_btn_start": "🚀 开始",
+        "quick_access_menu_hint": "底部快捷菜单已激活 ⬇️"
     }
 }

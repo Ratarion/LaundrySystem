@@ -1,10 +1,40 @@
 from aiogram.types import (InlineKeyboardMarkup,
-                           InlineKeyboardButton)
+                           InlineKeyboardButton,
+                           ReplyKeyboardMarkup,
+                           KeyboardButton)
 from datetime import datetime, timedelta
 from app.locales import ru, en, cn 
 
 # Объединяем словари локализации
 ALL_TEXTS = {**ru.RUtexts, **en.ENtexts, **cn.CNtexts} 
+
+def get_start_reply_keyboard() -> ReplyKeyboardMarkup:
+    """Начальная панель кнопок при первом старте бота"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🚀 Начать"), KeyboardButton(text="/start")]
+        ],
+        resize_keyboard=True,
+        is_persistent=True
+    )
+
+def get_main_reply_keyboard(lang: str = "RU") -> ReplyKeyboardMarkup:
+    """Постоянная нижняя панель быстрого доступа возле ввода текста"""
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=t.get("reply_btn_menu", "🏠 Главное меню")),
+                KeyboardButton(text=t.get("reply_btn_book", "🧺 Записаться"))
+            ],
+            [
+                KeyboardButton(text=t.get("reply_btn_my_records", "📋 Мои записи")),
+                KeyboardButton(text=t.get("reply_btn_settings", "⚙️ Настройки"))
+            ]
+        ],
+        resize_keyboard=True,
+        is_persistent=True
+    )
 
 kb_welcom = InlineKeyboardMarkup(inline_keyboard=[
     [

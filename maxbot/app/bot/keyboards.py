@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from typing import List
 
-from aiomax.buttons import KeyboardBuilder, CallbackButton, LinkButton
+from aiomax.buttons import KeyboardBuilder, CallbackButton, LinkButton, MessageButton
 
 from app.locales import ru, en, cn
 
@@ -19,6 +19,31 @@ _t = get_texts
 def _payload(cmd: str, **kwargs) -> str:
     data = {"cmd": cmd, **kwargs}
     return json.dumps(data, ensure_ascii=False)
+
+
+def get_start_keyboard() -> KeyboardBuilder:
+    """Начальные кнопки при старте MAX-бота"""
+    kb = KeyboardBuilder()
+    kb.row(
+        MessageButton("🚀 Начать"),
+        MessageButton("/start")
+    )
+    return kb
+
+
+def get_main_reply_keyboard(lang: str = "RU") -> KeyboardBuilder:
+    """Быстрые кнопки в MAX-боте"""
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(
+        MessageButton(t.get("reply_btn_menu", "🏠 Главное меню")),
+        MessageButton(t.get("reply_btn_book", "🧺 Записаться"))
+    )
+    kb.row(
+        MessageButton(t.get("reply_btn_my_records", "📋 Мои записи")),
+        MessageButton(t.get("reply_btn_settings", "⚙️ Настройки"))
+    )
+    return kb
 
 
 def get_lang_keyboard(is_settings: bool = False, lang: str = "RU") -> KeyboardBuilder:

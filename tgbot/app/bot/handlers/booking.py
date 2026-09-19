@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, time, timedelta
 from app.bot.utils.timezone import get_kemerovo_now
@@ -61,6 +61,34 @@ async def get_colored_calendar(year: int, month: int, locale: str, machine_type=
     max_slots = await get_total_daily_capacity_by_type(machine_type, dormitory_id=dormitory_id)
     calendar = CustomLaundryCalendar(workload=workload, max_capacity=max_slots, locale=locale)
     return await calendar.start_calendar(year=year, month=month)
+
+
+@booking_router.message(F.text.in_({
+    "🧺 Записаться", "🧺 Book Laundry", "🧺 预约洗衣",
+    "/book", "записаться", "Записаться"
+}))
+async def process_record_start_msg(message: Message, state: FSMContext):
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
+    user = await get_user_by_tg_id(message.from_user.id)
+    if not user:
+        await message.answer(t["none_user"])
+        return
+    
+    if getattr(user, "is_banned", False):
+        await message.answer(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
+        return
+    
+    dormitory_id = getattr(user, "dormitory_id", 1) or 1
+    await state.clear()
+    await state.update_data(user_id=user.id, dormitory_id=dormitory_id, lang=lang)
+
+    max_capacity = await get_total_daily_capacity_by_type(dormitory_id=dormitory_id)
+    if max_capacity == 0:
+        await message.answer(t["no_active_machines"])
+        return
+
+    await state.set_state(AddRecord.waiting_for_machine_type)
+    await message.answer(t["select_machine_type"], reply_markup=get_machine_type_keyboard(lang))
 
 
 @booking_router.callback_query(F.data == "record")

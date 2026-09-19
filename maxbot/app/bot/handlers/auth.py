@@ -10,6 +10,8 @@ from app.bot.keyboards import (
     get_section_keyboard,
     get_notifications_keyboard,
     get_settings_keyboard,
+    get_start_keyboard,
+    get_main_reply_keyboard,
 )
 from app.laundry_repo import (
     get_user_by_max_id,
@@ -72,6 +74,7 @@ async def on_bot_start_event(payload: BotStartPayload, cursor: fsm.FSMCursor):
 
     data = cursor.get_data() or {}
     if "lang" not in data:
+        await payload.send("Нажмите «🚀 Начать» или выберите язык для продолжения:", keyboard=get_start_keyboard())
         await payload.send(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
         lang, t = await get_lang_and_texts(user_id, cursor=cursor)
@@ -101,6 +104,7 @@ async def cmd_start(ctx: CommandContext, cursor: fsm.FSMCursor):
 
     data = cursor.get_data() or {}
     if "lang" not in data:
+        await ctx.reply("Нажмите «🚀 Начать» или выберите язык для продолжения:", keyboard=get_start_keyboard())
         await ctx.reply(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
         lang, t = await get_lang_and_texts(user_id, cursor=cursor)
@@ -108,7 +112,7 @@ async def cmd_start(ctx: CommandContext, cursor: fsm.FSMCursor):
         cursor.change_state(Auth.waiting_for_fio)
 
 
-@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in ["/start", "старт", "start", "начать"])
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in ["/start", "старт", "start", "начать", "🚀 начать", "🚀 start"])
 async def cmd_start_text(message: Message, cursor: fsm.FSMCursor):
     user_id = message.sender.user_id
     existing_user = await get_user_by_max_id(user_id)
@@ -130,6 +134,7 @@ async def cmd_start_text(message: Message, cursor: fsm.FSMCursor):
 
     data = cursor.get_data() or {}
     if "lang" not in data:
+        await message.reply("Нажмите «🚀 Начать» или выберите язык для продолжения:", keyboard=get_start_keyboard())
         await message.reply(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
         lang, t = await get_lang_and_texts(user_id, cursor=cursor)
@@ -261,3 +266,83 @@ async def cmd_open_site_max(message: Message, cursor: fsm.FSMCursor):
     kb = KeyboardBuilder()
     kb.row(LinkButton(btn_text, url))
     await message.reply(text=f"🌐 {btn_text}:\n{url}", keyboard=kb)
+
+
+# --- Обработчики кнопок быстрого доступа в MAX-боте ---
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in [
+    "🏠 главное меню", "🏠 main menu", "🏠 主菜单", "главное меню", "/menu", "menu"
+])
+async def max_reply_show_main_menu(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    user = await get_user_by_max_id(user_id)
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    if user:
+        await _send_main_menu(user_id, user, lang, t, message=message)
+    else:
+        await cmd_start_text(message, cursor)
+
+
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in [
+    "🧺 записаться", "🧺 book laundry", "🧺 预约洗衣", "записаться", "/book", "book"
+])
+async def max_reply_book(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    user = await get_user_by_max_id(user_id)
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    if not user:
+        await message.reply(t["none_user"])
+        return
+    if getattr(user, "is_banned", False):
+        await message.reply(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
+        return
+    from app.bot.keyboards import get_machine_type_keyboard
+    await message.reply(text=t["select_machine_type"], keyboard=get_machine_type_keyboard(lang))
+
+
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in [
+    "📋 мои записи", "📋 my bookings", "📋 我的预约", "мои записи", "/records", "records"
+])
+async def max_reply_records(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    user = await get_user_by_max_id(user_id)
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    if not user:
+        await message.reply(t["none_user"])
+        return
+    from app.laundry_repo import get_user_bookings
+    bookings = await get_user_bookings(user.id)
+    from app.bot.keyboards import get_back_to_sections_keyboard
+    back_kb = get_back_to_sections_keyboard(lang)
+    if not bookings:
+        no_bookings_text = t.get("no_user_bookings", "У вас нет записей.")
+        await message.reply(text=no_bookings_text, keyboard=back_kb)
+        return
+    lines = []
+    machine_label = t.get("machine", "Машина")
+    for b in bookings[:20]:
+        start_str = b.start_time.strftime("%d.%m.%Y %H:%M") if b.start_time else "—"
+        end_str = b.end_time.strftime("%H:%M") if b.end_time else "—"
+        machine_num = b.machine.number_machine if getattr(b, "machine", None) else "—"
+        raw_type = b.machine.type_machine if getattr(b, "machine", None) else "—"
+        if raw_type == "Стиральная":
+            machine_type = t.get("machine_type_wash", "Стиральная")
+        elif raw_type == "Сушильная":
+            machine_type = t.get("machine_type_dry", "Сушильная")
+        else:
+            machine_type = raw_type
+        dorm_text = f" • Общ. №{b.dormitory_id}" if getattr(b, "dormitory_id", None) else ""
+        lines.append(f"• {start_str} - {end_str}{dorm_text} • {machine_label} №{machine_num} ({machine_type})")
+    title = t.get("show_records_title", "Ваши записи:")
+    text = title + "\n\n" + "\n".join(lines)
+    await message.reply(text=text, keyboard=back_kb)
+
+
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in [
+    "⚙️ настройки", "⚙️ settings", "⚙️ 设置", "настройки", "/settings", "settings"
+])
+async def max_reply_settings(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    user = await get_user_by_max_id(user_id)
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    text = t.get("settings_title", "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:")
+    await message.reply(text=text, keyboard=get_settings_keyboard(lang))

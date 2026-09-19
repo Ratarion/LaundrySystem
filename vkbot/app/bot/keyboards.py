@@ -15,7 +15,7 @@ Payload кнопок — обычный JSON-словарь с ключом "cmd
 """
 from datetime import datetime, timedelta
 
-from vkbottle import Keyboard, Callback, KeyboardButtonColor, OpenLink
+from vkbottle import Keyboard, Callback, KeyboardButtonColor, OpenLink, Text
 
 from app.locales import ru, en, cn
 
@@ -28,6 +28,30 @@ def get_texts(lang: str) -> dict:
 
 # короткий алиас для внутреннего использования в этом файле
 _t = get_texts
+
+
+def get_start_reply_keyboard() -> str:
+    """Начальная панель кнопок при первом старте VK-бота"""
+    kb = (
+        Keyboard(one_time=False, inline=False)
+        .add(Text("🚀 Начать"), color=KeyboardButtonColor.PRIMARY)
+        .add(Text("/start"), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
+
+
+def get_main_reply_keyboard(lang: str = "RU") -> str:
+    """Постоянная нижняя панель быстрого доступа под полем ввода"""
+    t = _t(lang)
+    kb = (
+        Keyboard(one_time=False, inline=False)
+        .add(Text(t.get("reply_btn_menu", "🏠 Главное меню")), color=KeyboardButtonColor.PRIMARY)
+        .add(Text(t.get("reply_btn_book", "🧺 Записаться")), color=KeyboardButtonColor.POSITIVE)
+        .row()
+        .add(Text(t.get("reply_btn_my_records", "📋 Мои записи")), color=KeyboardButtonColor.SECONDARY)
+        .add(Text(t.get("reply_btn_settings", "⚙️ Настройки")), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
 
 
 def get_lang_keyboard(is_settings: bool = False, lang: str = "RU") -> str:

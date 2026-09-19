@@ -1,5 +1,6 @@
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.filters import Command
+from aiogram.types import CallbackQuery, Message
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from app.bot.utils.translate import get_lang_and_texts
@@ -10,6 +11,53 @@ import logging
 from app.bot.keyboards import get_back_to_sections_keyboard
 
 records_router = Router()
+
+
+@records_router.message(Command("records"))
+@records_router.message(F.text.in_({
+    "📋 Мои записи", "📋 My Bookings", "📋 我的预约",
+    "/records", "мои записи", "Мои записи"
+}))
+async def show_records_msg(message: Message, state: FSMContext):
+    await state.clear()
+    lang, t = await get_lang_and_texts(state, tg_id=message.from_user.id)
+    await state.set_state(DisplayRecords.waiting_for_display)
+    user = await get_user_by_tg_id(message.from_user.id)
+    
+    if not user:
+        await message.answer(t["none_user"])
+        return
+
+    bookings = await get_user_bookings(user.id)
+    back_kb = get_back_to_sections_keyboard(lang)
+
+    if not bookings:
+        no_bookings_text = t.get("no_user_bookings", "У вас нет записей.")
+        await message.answer(no_bookings_text, reply_markup=back_kb)
+        return
+
+    lines = []
+    machine_label = t.get('machine', 'Машина')
+
+    for b in bookings[:20]:
+        start_str = b.start_time.strftime("%d.%m.%Y %H:%M") if b.start_time else "—"
+        end_str = b.end_time.strftime("%H:%M") if b.end_time else "—"
+        machine_num = b.machine.number_machine if hasattr(b, 'machine') and b.machine else "—"
+        
+        raw_type = b.machine.type_machine if hasattr(b, 'machine') and b.machine else "—"
+        if raw_type == "Стиральная":
+            machine_type = t.get("machine_type_wash", "Стиральная")
+        elif raw_type == "Сушильная":
+            machine_type = t.get("machine_type_dry", "Сушильная")
+        else:
+            machine_type = raw_type
+
+        dorm_text = f" • Общ. №{b.dormitory_id}" if getattr(b, "dormitory_id", None) else ""
+        lines.append(f"• {start_str} - {end_str}{dorm_text} • {machine_label} №{machine_num} ({machine_type})")
+
+    title = t.get("show_records_title", "Ваши записи:")
+    text = title + "\n\n" + "\n".join(lines)
+    await message.answer(text, reply_markup=back_kb)
 
 
 @records_router.callback_query(F.data == "show_records")

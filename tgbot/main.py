@@ -27,12 +27,28 @@ from app.bot.handlers.confirmation import confirm_router
 
 from app.db.base import init_db
 
+from aiogram.types import BotCommand, BotCommandScopeDefault
+
 TOKEN = cfg.BOT_TOKEN
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
+async def setup_bot_commands(bot_instance: Bot):
+    commands = [
+        BotCommand(command="start", description="Запустить бота / главное меню"),
+        BotCommand(command="menu", description="Главное меню"),
+        BotCommand(command="records", description="Мои записи"),
+        BotCommand(command="settings", description="Настройки"),
+    ]
+    try:
+        await bot_instance.set_my_commands(commands, scope=BotCommandScopeDefault())
+        logging.info("[Bot] Bot commands menu registered successfully")
+    except Exception as e:
+        logging.error(f"[Bot] Failed to register bot commands: {e}")
+
 async def main():
     await init_db()
+    await setup_bot_commands(bot)
     dp.include_router(auth_router)
     dp.include_router(booking_router)
     dp.include_router(records_router)
