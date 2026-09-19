@@ -1,6 +1,93 @@
 <?php
 // views/stats.php — Расширенная статистика и аналитика прачечной
+
+if (!function_exists('shortDormName')) {
+    function shortDormName($name) {
+        if (empty($name)) return '—';
+        if (preg_match('/№\s*(\d+)/u', $name, $m)) {
+            return '№' . $m[1];
+        }
+        if (preg_match('/(\d+)/u', $name, $m)) {
+            return '№' . $m[1];
+        }
+        return mb_substr($name, 0, 8);
+    }
+}
 ?>
+<style>
+.stats-tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (min-width: 1024px) {
+    .stats-tables-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+.stats-table-card {
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 18px 18px !important;
+    display: flex;
+    flex-direction: column;
+}
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: auto;
+}
+.stats-table th {
+    background-color: #f8fafc;
+    padding: 8px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.stats-table td {
+    padding: 7px 6px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-main);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.stats-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+.stats-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.stats-charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+    .stats-charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.stats-chart-card {
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 20px !important;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+}
+</style>
+
 <div class="content-area">
 
     <div class="page-header">
@@ -11,19 +98,19 @@
     </div>
 
     <!-- Фильтры отчёта -->
-    <div class="glass-card">
+    <div class="glass-card" style="padding: 18px 20px;">
         <form method="GET" action="/stats" class="form-grid">
-            <div class="form-group" style="min-width: 170px;">
+            <div class="form-group" style="min-width: 150px; flex: 1;">
                 <label class="form-label"><i class="fa-regular fa-calendar"></i> Дата с</label>
                 <input type="date" name="date_from" value="<?= e($from) ?>" class="form-control">
             </div>
             
-            <div class="form-group" style="min-width: 170px;">
+            <div class="form-group" style="min-width: 150px; flex: 1;">
                 <label class="form-label"><i class="fa-regular fa-calendar-check"></i> Дата по</label>
                 <input type="date" name="date_to" value="<?= e($to) ?>" class="form-control">
             </div>
 
-            <div class="form-group" style="min-width: 220px;">
+            <div class="form-group" style="min-width: 180px; flex: 1.2;">
                 <label class="form-label"><i class="fa-solid fa-building"></i> Общежитие</label>
                 <?php if ($sessionDormId !== null): ?>
                     <input type="hidden" name="dormitory_id" value="<?= $sessionDormId ?>">
@@ -43,122 +130,122 @@
                 <?php endif; ?>
             </div>
 
-            <div style="display: flex; gap: 10px; align-items: flex-end;">
-                <button type="submit" class="btn btn-primary" style="padding: 10px 22px;">
+            <div style="display: flex; gap: 8px; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
                     <i class="fa-solid fa-filter"></i> Показать
                 </button>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; align-items: flex-end;">
+            <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; align-items: flex-end;">
                 <a href="/stats/export/xlsx?from=<?= urlencode($from) ?>&to=<?= urlencode($to) ?>&dormitory_id=<?= urlencode($dormitory_id) ?>" 
-                   class="btn" style="border: 1px solid #10b981; color: #059669; background: #ecfdf5; font-weight: 600; padding: 10px 18px; display: inline-flex; align-items: center; gap: 8px;"
-                   title="Выгрузить расширенный отчёт в Excel с графиками и статистикой по комнатам">
-                    <i class="fa-solid fa-file-excel" style="font-size: 16px;"></i> Экспорт в Excel
+                   class="btn" style="border: 1px solid #10b981; color: #059669; background: #ecfdf5; font-weight: 600; padding: 10px 14px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;"
+                   title="Выгрузить расширенный отчёт в Excel">
+                    <i class="fa-solid fa-file-excel" style="font-size: 15px;"></i> Экспорт в Excel
                 </a>
                 <a href="/stats/export/docx?from=<?= urlencode($from) ?>&to=<?= urlencode($to) ?>&dormitory_id=<?= urlencode($dormitory_id) ?>" 
-                   class="btn" style="border: 1px solid #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600; padding: 10px 18px; display: inline-flex; align-items: center; gap: 8px;"
-                   title="Выгрузить отчёт в Word с ключевыми таблицами">
-                    <i class="fa-solid fa-file-word" style="font-size: 16px;"></i> Экспорт в Word
+                   class="btn" style="border: 1px solid #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600; padding: 10px 14px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;"
+                   title="Выгрузить отчёт в Word">
+                    <i class="fa-solid fa-file-word" style="font-size: 15px;"></i> Экспорт в Word
                 </a>
             </div>
         </form>
     </div>
 
     <!-- Карточки ключевых показателей -->
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-        <div class="stat-card">
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        <div class="stat-card" style="padding: 18px 16px;">
             <h4 class="stat-card-title"><i class="fa-solid fa-calendar-check" style="color: var(--primary);"></i> Всего бронирований</h4>
-            <h2 class="stat-card-value" style="color: var(--primary);"><?= $totalBookings ?></h2>
-            <small style="color: var(--text-muted); font-size: 12px;">за выбранный период</small>
+            <h2 class="stat-card-value" style="color: var(--primary); font-size: 34px;"><?= $totalBookings ?></h2>
+            <small style="color: var(--text-muted); font-size: 11px;">за выбранный период</small>
         </div>
 
-        <div class="stat-card">
-            <h4 class="stat-card-title"><i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Активных / Состоявшихся</h4>
-            <h2 class="stat-card-value" style="color: var(--success);"><?= $activeCount ?></h2>
-            <small style="color: var(--success); font-weight: 600;"><?= $totalBookings ? round(($activeCount / $totalBookings) * 100) : 0 ?>% от общего числа</small>
+        <div class="stat-card" style="padding: 18px 16px;">
+            <h4 class="stat-card-title"><i class="fa-solid fa-circle-check" style="color: var(--success);"></i> Активных / Состоялось</h4>
+            <h2 class="stat-card-value" style="color: var(--success); font-size: 34px;"><?= $activeCount ?></h2>
+            <small style="color: var(--success); font-weight: 600; font-size: 11px;"><?= $totalBookings ? round(($activeCount / $totalBookings) * 100) : 0 ?>% от общего числа</small>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" style="padding: 18px 16px;">
             <h4 class="stat-card-title"><i class="fa-solid fa-circle-xmark" style="color: var(--danger);"></i> Отменено</h4>
-            <h2 class="stat-card-value" style="color: var(--danger);"><?= $cancelledCount ?></h2>
-            <small style="color: var(--danger); font-weight: 600;"><?= $cancelledPercent ?>% отмен</small>
+            <h2 class="stat-card-value" style="color: var(--danger); font-size: 34px;"><?= $cancelledCount ?></h2>
+            <small style="color: var(--danger); font-weight: 600; font-size: 11px;"><?= $cancelledPercent ?>% отмен</small>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card" style="padding: 18px 16px;">
             <h4 class="stat-card-title"><i class="fa-solid fa-door-closed" style="color: #0284c7;"></i> Активных комнат</h4>
-            <h2 class="stat-card-value" style="color: #0284c7;"><?= $uniqueRoomsCount ?></h2>
-            <small style="color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="Самая активная: <?= e($topRoomName) ?> (<?= $topRoomCount ?>)">
+            <h2 class="stat-card-value" style="color: #0284c7; font-size: 34px;"><?= $uniqueRoomsCount ?></h2>
+            <small style="color: var(--text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="Самая активная: <?= e($topRoomName) ?> (<?= $topRoomCount ?>)">
                 Топ: <?= e($topRoomName) ?> (<?= $topRoomCount ?>)
             </small>
         </div>
     </div>
 
     <!-- Графики -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
-        <div class="glass-card" style="margin-bottom: 0; min-height: 420px; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 class="card-title" style="margin-bottom: 0;"><i class="fa-solid fa-chart-column"></i> Загрузка по дням</h3>
-                <span class="badge" style="background: #e0e7ff; color: #4338ca; font-weight: 600; padding: 4px 10px;">
+    <div class="stats-charts-grid">
+        <div class="glass-card stats-chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 class="card-title" style="margin-bottom: 0; font-size: 15px;"><i class="fa-solid fa-chart-column"></i> Загрузка по дням</h3>
+                <span class="badge" style="background: #e0e7ff; color: #4338ca; font-weight: 600; padding: 3px 8px; font-size: 11px;">
                     <?= count($dailyLabels) ?> дней с активностью
                 </span>
             </div>
-            <div style="flex: 1; position: relative;">
+            <div style="flex: 1; position: relative; min-height: 280px;">
                 <canvas id="dailyChart"></canvas>
             </div>
         </div>
 
-        <div class="glass-card" style="margin-bottom: 0; min-height: 420px; display: flex; flex-direction: column;">
-            <h3 class="card-title" style="margin-bottom: 16px;"><i class="fa-solid fa-chart-pie"></i> Оборудование и статусы</h3>
-            <div style="flex: 1; position: relative; max-height: 280px; display: flex; align-items: center; justify-content: center;">
+        <div class="glass-card stats-chart-card">
+            <h3 class="card-title" style="margin-bottom: 12px; font-size: 15px;"><i class="fa-solid fa-chart-pie"></i> Оборудование и статусы</h3>
+            <div style="flex: 1; position: relative; max-height: 220px; display: flex; align-items: center; justify-content: center;">
                 <canvas id="typeChart"></canvas>
             </div>
-            <div style="display: flex; justify-content: space-around; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 13px;">
+            <div style="display: flex; justify-content: space-around; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px;">
                 <div>
-                    <span style="display:inline-block; width:10px; height:10px; background:#6366f1; border-radius:50%; margin-right:4px;"></span>
+                    <span style="display:inline-block; width:8px; height:8px; background:#6366f1; border-radius:50%; margin-right:3px;"></span>
                     Стиральные: <strong><?= $typeStats['washing'] ?></strong>
                 </div>
                 <div>
-                    <span style="display:inline-block; width:10px; height:10px; background:#06b6d4; border-radius:50%; margin-right:4px;"></span>
+                    <span style="display:inline-block; width:8px; height:8px; background:#06b6d4; border-radius:50%; margin-right:3px;"></span>
                     Сушильные: <strong><?= $typeStats['drying'] ?></strong>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Таблицы детальной аналитики: По комнатам и По оборудованию -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Таблицы детальной аналитики: По комнатам и По оборудованию (КОМПАКТНЫЙ ВАРИАНТ) -->
+    <div class="stats-tables-grid">
         
         <!-- СТАТИСТИКА ПО КОМНАТАМ -->
-        <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 class="card-title" style="margin-bottom: 0;">
+        <div class="glass-card stats-table-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 class="card-title" style="margin-bottom: 0; font-size: 15px;">
                     <i class="fa-solid fa-door-open"></i> Статистика по комнатам
                 </h3>
-                <span class="badge badge-info" style="font-weight: 600;">
+                <span class="badge badge-info" style="font-weight: 600; font-size: 11px; padding: 2px 8px;">
                     Комнат: <?= count($roomStats) ?>
                 </span>
             </div>
 
-            <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 8px;">
-                <div class="table-scroll" style="max-height: 440px;">
-                    <table class="custom-table">
+            <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 6px; border: 1px solid #e2e8f0; max-width: 100%; overflow: hidden;">
+                <div class="table-scroll" style="max-height: 420px; width: 100%; overflow-x: auto;">
+                    <table class="stats-table">
                         <thead>
                             <tr>
-                                <th style="width: 50px; text-align: center;">№</th>
+                                <th style="width: 32px; text-align: center;">№</th>
                                 <th>Комната</th>
                                 <?php if (empty($dormitory_id)): ?>
-                                    <th>Общежитие</th>
+                                    <th style="text-align: center; width: 48px;">Общ.</th>
                                 <?php endif; ?>
-                                <th style="text-align: center; width: 85px;">Всего</th>
-                                <th style="text-align: center; width: 85px;">Активных</th>
-                                <th style="text-align: center; width: 85px;">Отмен</th>
-                                <th style="width: 110px; text-align: center;">Доля</th>
+                                <th style="text-align: center; width: 48px;">Всего</th>
+                                <th style="text-align: center; width: 44px;">Акт.</th>
+                                <th style="text-align: center; width: 44px;">Отм.</th>
+                                <th style="width: 75px; text-align: center;">Доля</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($roomStats)): ?>
                                 <tr>
-                                    <td colspan="<?= empty($dormitory_id) ? 7 : 6 ?>" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                    <td colspan="<?= empty($dormitory_id) ? 7 : 6 ?>" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;">
                                         Нет записей за выбранный период
                                     </td>
                                 </tr>
@@ -169,24 +256,28 @@
                                     $pct = $totalBookings ? round(($rItem['total'] / $totalBookings) * 100, 1) : 0;
                                 ?>
                                 <tr>
-                                    <td style="text-align: center; color: var(--text-muted); font-size: 12px;"><?= $rIdx++ ?></td>
-                                    <td style="font-weight: 700; white-space: nowrap;">
-                                        <span class="badge" style="background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; font-size: 13px; font-weight: 700;">
-                                            <i class="fa-solid fa-door-closed" style="color: #64748b; font-size: 11px;"></i> <?= e($rItem['room']) ?>
+                                    <td style="text-align: center; color: var(--text-muted); font-size: 11px;"><?= $rIdx++ ?></td>
+                                    <td style="font-weight: 700;">
+                                        <span class="badge" style="background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 700; padding: 2px 6px;">
+                                            <i class="fa-solid fa-door-closed" style="color: #64748b; font-size: 10px;"></i> <?= e($rItem['room']) ?>
                                         </span>
                                     </td>
                                     <?php if (empty($dormitory_id)): ?>
-                                        <td style="font-size: 12px; color: #0369a1; white-space: nowrap;"><?= e($rItem['dormitory']) ?></td>
+                                        <td style="text-align: center;">
+                                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 2px 5px;" title="<?= e($rItem['dormitory']) ?>">
+                                                <?= e(shortDormName($rItem['dormitory'])) ?>
+                                            </span>
+                                        </td>
                                     <?php endif; ?>
-                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 14px;"><?= $rItem['total'] ?></td>
-                                    <td style="text-align: center; font-weight: 600; color: var(--success); font-size: 13px;"><?= $rItem['active'] ?></td>
-                                    <td style="text-align: center; font-weight: 600; color: var(--danger); font-size: 13px;"><?= $rItem['cancelled'] ?></td>
+                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;"><?= $rItem['total'] ?></td>
+                                    <td style="text-align: center; font-weight: 600; color: var(--success); font-size: 12px;"><?= $rItem['active'] ?></td>
+                                    <td style="text-align: center; font-weight: 600; color: var(--danger); font-size: 12px;"><?= $rItem['cancelled'] ?></td>
                                     <td style="text-align: center;">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <div style="flex: 1; background: #e2e8f0; height: 6px; border-radius: 999px; overflow: hidden;">
+                                        <div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
+                                            <div style="width: 36px; background: #e2e8f0; height: 5px; border-radius: 999px; overflow: hidden;">
                                                 <div style="width: <?= min(100, $pct * 3) ?>%; background: #6366f1; height: 100%; border-radius: 999px;"></div>
                                             </div>
-                                            <span style="font-size: 11px; font-weight: 600; color: #64748b; min-width: 32px; text-align: right;"><?= $pct ?>%</span>
+                                            <span style="font-size: 10px; font-weight: 600; color: #64748b; min-width: 28px; text-align: right;"><?= $pct ?>%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -199,35 +290,34 @@
         </div>
 
         <!-- ЗАГРУЗКА ОБОРУДОВАНИЯ -->
-        <div class="glass-card" style="margin-bottom: 0; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 class="card-title" style="margin-bottom: 0;">
+        <div class="glass-card stats-table-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 class="card-title" style="margin-bottom: 0; font-size: 15px;">
                     <i class="fa-solid fa-soap"></i> Загрузка оборудования
                 </h3>
-                <span class="badge badge-info" style="font-weight: 600;">
+                <span class="badge badge-info" style="font-weight: 600; font-size: 11px; padding: 2px 8px;">
                     Единиц: <?= count($machineStats) ?>
                 </span>
             </div>
 
-            <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 8px;">
-                <div class="table-scroll" style="max-height: 440px;">
-                    <table class="custom-table">
+            <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 6px; border: 1px solid #e2e8f0; max-width: 100%; overflow: hidden;">
+                <div class="table-scroll" style="max-height: 420px; width: 100%; overflow-x: auto;">
+                    <table class="stats-table">
                         <thead>
                             <tr>
-                                <th style="width: 50px; text-align: center;">№</th>
+                                <th style="width: 32px; text-align: center;">№</th>
                                 <th>Оборудование</th>
-                                <th style="width: 110px; text-align: center;">Тип</th>
                                 <?php if (empty($dormitory_id)): ?>
-                                    <th>Общежитие</th>
+                                    <th style="text-align: center; width: 48px;">Общ.</th>
                                 <?php endif; ?>
-                                <th style="text-align: center; width: 90px;">Стирок</th>
-                                <th style="width: 110px; text-align: center;">Доля</th>
+                                <th style="text-align: center; width: 55px;">Стирок</th>
+                                <th style="width: 75px; text-align: center;">Доля</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($machineStats)): ?>
                                 <tr>
-                                    <td colspan="<?= empty($dormitory_id) ? 6 : 5 ?>" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                                    <td colspan="<?= empty($dormitory_id) ? 5 : 4 ?>" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px;">
                                         Нет записей за выбранный период
                                     </td>
                                 </tr>
@@ -237,31 +327,35 @@
                                 foreach ($machineStats as $mItem): 
                                     $mPct = $totalBookings ? round(($mItem['total'] / $totalBookings) * 100, 1) : 0;
                                     $isDryer = str_contains(mb_strtolower($mItem['type']), 'сушил');
+                                    $mNum = !empty($mItem['number']) ? $mItem['number'] : (preg_match('/#(\d+)/', $mItem['name'], $nm) ? $nm[1] : $mItem['name']);
                                 ?>
                                 <tr>
-                                    <td style="text-align: center; color: var(--text-muted); font-size: 12px;"><?= $mIdx++ ?></td>
-                                    <td style="font-weight: 700;"><?= e($mItem['name']) ?></td>
-                                    <td style="text-align: center;">
+                                    <td style="text-align: center; color: var(--text-muted); font-size: 11px;"><?= $mIdx++ ?></td>
+                                    <td>
                                         <?php if ($isDryer): ?>
-                                            <span class="badge" style="background: #cffafe; color: #0e7490; border: 1px solid #a5f3fc; font-size: 11px;">
-                                                Сушилка
+                                            <span class="badge" style="background: #cffafe; color: #0e7490; border: 1px solid #a5f3fc; font-size: 12px; font-weight: 700; padding: 3px 8px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;">
+                                                <i class="fa-solid fa-wind" style="font-size: 10px;"></i> Сушилка #<?= e($mNum) ?>
                                             </span>
                                         <?php else: ?>
-                                            <span class="badge" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 11px;">
-                                                Стиралка
+                                            <span class="badge" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 12px; font-weight: 700; padding: 3px 8px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;">
+                                                <i class="fa-solid fa-soap" style="font-size: 10px;"></i> Стиралка #<?= e($mNum) ?>
                                             </span>
                                         <?php endif; ?>
                                     </td>
                                     <?php if (empty($dormitory_id)): ?>
-                                        <td style="font-size: 12px; color: #0369a1; white-space: nowrap;"><?= e($mItem['dormitory']) ?></td>
+                                        <td style="text-align: center;">
+                                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 2px 5px;" title="<?= e($mItem['dormitory']) ?>">
+                                                <?= e(shortDormName($mItem['dormitory'])) ?>
+                                            </span>
+                                        </td>
                                     <?php endif; ?>
-                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 14px;"><?= $mItem['total'] ?></td>
+                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;"><?= $mItem['total'] ?></td>
                                     <td style="text-align: center;">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <div style="flex: 1; background: #e2e8f0; height: 6px; border-radius: 999px; overflow: hidden;">
+                                        <div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
+                                            <div style="width: 36px; background: #e2e8f0; height: 5px; border-radius: 999px; overflow: hidden;">
                                                 <div style="width: <?= min(100, $mPct * 3) ?>%; background: <?= $isDryer ? '#06b6d4' : '#6366f1' ?>; height: 100%; border-radius: 999px;"></div>
                                             </div>
-                                            <span style="font-size: 11px; font-weight: 600; color: #64748b; min-width: 32px; text-align: right;"><?= $mPct ?>%</span>
+                                            <span style="font-size: 10px; font-weight: 600; color: #64748b; min-width: 28px; text-align: right;"><?= $mPct ?>%</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -351,7 +445,8 @@
                         position: 'bottom',
                         labels: {
                             font: { family: "'Inter', sans-serif" },
-                            padding: 14
+                            padding: 10,
+                            boxWidth: 12
                         }
                     }
                 },
