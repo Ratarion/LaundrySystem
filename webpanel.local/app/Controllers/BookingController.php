@@ -52,15 +52,21 @@ class BookingController extends BaseController
                     $botNotifier = new BotNotifier();
                     $notifiedCount = 0;
                     foreach ($affectedBookings as $b) {
-                        $timeStr = date('d.m.Y H:i', strtotime($b['start_time']));
-                        $typeStr = mb_strtolower($b['type_machine'] ?? $type);
+                        $startTime = strtotime($b['start_time']);
+                        $endTime   = !empty($b['end_time']) ? strtotime($b['end_time']) : ($startTime + 90 * 60);
+                        if (date('Y-m-d', $startTime) === date('Y-m-d', $endTime)) {
+                            $timeStr = date('d.m.Y H:i', $startTime) . ' - ' . date('H:i', $endTime);
+                        } else {
+                            $timeStr = date('d.m.Y H:i', $startTime) . ' - ' . date('d.m.Y H:i', $endTime);
+                        }
+                        $typeStr = mb_strtolower($b['type_machine'] ?? $type ?? 'стиральная');
                         $numStr  = $b['number_machine'] ?? '';
                         $dormStr = !empty($b['dormitory_name']) ? " ({$b['dormitory_name']})" : '';
                         $name    = !empty($b['first_name']) ? "Здравствуйте, {$b['first_name']}!" : "Здравствуйте!";
                         
                         $msg     = "⚠️ <b>Внимание: отмена бронирования</b>\n\n"
                                  . "{$name}\n"
-                                 . "Ваша запись на <b>{$typeStr} машину №{$numStr}</b>{$dormStr} на <b>{$timeStr}</b> была отменена администратором.\n\n"
+                                 . "Ваше бронирование (<b>{$typeStr} машина №{$numStr}</b>{$dormStr} на <b>{$timeStr}</b>) было отменено администратором.\n\n"
                                  . "💬 <b>Причина отмены:</b> " . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
                         
                         $res = $botNotifier->notifyResident($b, $msg);
@@ -114,8 +120,14 @@ class BookingController extends BaseController
                     
                     if ($isLoaded) {
                         $botNotifier = new BotNotifier();
-                        $timeStr = date('d.m.Y H:i', strtotime($booking->start_time));
-                        $typeStr = mb_strtolower($booking->type_machine ?? 'стиральной');
+                        $startTime = strtotime($booking->start_time);
+                        $endTime   = !empty($booking->end_time) ? strtotime($booking->end_time) : ($startTime + 90 * 60);
+                        if (date('Y-m-d', $startTime) === date('Y-m-d', $endTime)) {
+                            $timeStr = date('d.m.Y H:i', $startTime) . ' - ' . date('H:i', $endTime);
+                        } else {
+                            $timeStr = date('d.m.Y H:i', $startTime) . ' - ' . date('d.m.Y H:i', $endTime);
+                        }
+                        $typeStr = mb_strtolower($booking->type_machine ?? 'стиральная');
                         $numStr  = $booking->number_machine ?? '';
                         $dormStr = !empty($booking->dormitory_name) ? " ({$booking->dormitory_name})" : '';
                         $name    = !empty($booking->resident_name) ? "Здравствуйте, {$booking->resident_name}!" : "Здравствуйте!";

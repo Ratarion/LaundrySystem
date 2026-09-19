@@ -241,7 +241,7 @@ class Booking
     {
         try {
             $sql = "
-                SELECT b.id, b.start_time, b.inidresidents, b.inidmachine, m.number_machine, m.type_machine, r.vk_id, r.tg_id, r.max_id, r.first_name,
+                SELECT b.id, b.start_time, b.end_time, b.inidresidents, b.inidmachine, m.number_machine, m.type_machine, r.vk_id, r.tg_id, r.max_id, r.first_name,
                        d.name AS dormitory_name
                 FROM booking b
                 JOIN machines m ON b.inidmachine = m.id
