@@ -155,7 +155,7 @@
 
             <div class="form-group">
                 <label class="form-label">Номер зачётки / ID карты</label>
-                <input type="number" name="idcards" value="<?= e($editResident['idcards'] ?? '') ?>" required class="form-control" placeholder="123456">
+                <input type="text" name="idcards" value="<?= e($editResident['idcards'] ?? '') ?>" required class="form-control" placeholder="Например: 25Т107 или 244519">
             </div>
 
             <div class="form-group">

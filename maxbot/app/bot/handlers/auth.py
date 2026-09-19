@@ -192,12 +192,11 @@ async def process_id_card_auth(message: Message, cursor: fsm.FSMCursor):
     lang, t = await get_lang_and_texts(user_id, cursor=cursor)
     text = (message.body.text or "").strip()
 
-    if not text.isdigit():
+    if not text or len(text) < 2:
         await message.reply(t["reg_id_error"])
         return
 
-    id_card_num = int(text)
-    resident = await find_resident_by_id_card(id_card_num)
+    resident = await find_resident_by_id_card(text)
 
     if resident:
         if resident.max_id and resident.max_id != user_id:

@@ -9,7 +9,7 @@ class Resident(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     dormitory_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     inidroom: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    idcards: Mapped[Optional[int]] = mapped_column(Integer, unique=True, nullable=True)
+    idcards: Mapped[Optional[str]] = mapped_column(String(50), unique=True, nullable=True)
     tg_id: Mapped[Optional[int]] = mapped_column(BigInteger, unique=False, nullable=True)
     vk_id: Mapped[Optional[int]] = mapped_column(BigInteger, unique=False, nullable=True)
     max_id: Mapped[Optional[int]] = mapped_column(BigInteger, unique=False, nullable=True)

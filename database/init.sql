@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS residents (
     language TEXT DEFAULT 'RU',
     dormitory_id INTEGER REFERENCES dormitories(id) ON DELETE SET NULL DEFAULT 1,
     inidroom INTEGER REFERENCES rooms(idroom) ON DELETE SET NULL,
-    idcards INTEGER UNIQUE,
+    idcards VARCHAR(50) UNIQUE,
     last_name VARCHAR(100),
     first_name VARCHAR(100),
     patronymic VARCHAR(100),

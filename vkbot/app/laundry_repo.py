@@ -53,9 +53,17 @@ async def find_resident_by_fio(fio_parts: list[str]):
         return None
 
 
-async def find_resident_by_id_card(id_card: int):
+async def find_resident_by_id_card(id_card: str):
+    raw = str(id_card).strip().upper()
+    raw = "".join(raw.split())
+    cyr_to_lat = str.maketrans("АВЕКМНОРСТХ", "ABEKMHOPCTX")
+    lat_to_cyr = str.maketrans("ABEKMHOPCTX", "АВЕКМНОРСТХ")
+    var_lat = raw.translate(cyr_to_lat)
+    var_cyr = raw.translate(lat_to_cyr)
+    variants = list(set([raw, var_lat, var_cyr]))
+
     async with async_session() as session:
-        query = select(User).where(User.idcards == id_card)
+        query = select(User).where(or_(*[func.upper(User.idcards) == v for v in variants]))
         result = await session.execute(query)
         return result.scalar_one_or_none()
 

@@ -93,9 +93,9 @@ ENtexts = {
 
         # Authentication
         "none_user": "No data was found in the system. Please contact the administrator.",
-        "reg_id_error": "Please enter only numbers.",
+        "reg_id_error": "Please enter a valid student ID number.",
         "other_tg_id": "This user is already registered with another account.",
-        "seek_cards": "No user with this name was found. Enter your student ID number (numbers only)",
+        "seek_cards": "No user with this name was found. Enter your student ID number:",
         "auth": "Enter your full name (surname, first name, and patronymic) to log in",
         "write_FIO": "Please enter your full name (at least 2 words)."
     }

@@ -143,12 +143,12 @@ async def process_fio_auth(message: Message, state: FSMContext):
 @auth_router.message(Auth.waiting_for_id_card)
 async def process_id_card_auth(message: Message, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
-    if not message.text.isdigit():
+    id_card_input = (message.text or "").strip()
+    if not id_card_input or len(id_card_input) < 2:
         await message.answer(t["reg_id_error"])
         return
         
-    id_card_num = int(message.text)
-    resident = await find_resident_by_id_card(id_card_num)
+    resident = await find_resident_by_id_card(id_card_input)
     
     if resident:
         if resident.tg_id and resident.tg_id != message.from_user.id:

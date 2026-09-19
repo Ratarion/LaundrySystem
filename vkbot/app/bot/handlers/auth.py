@@ -133,12 +133,11 @@ async def process_id_card_auth(message: Message):
     peer_id = message.peer_id
     lang, t = await get_lang_and_texts(peer_id)
     text = (message.text or "").strip()
-    if not text.isdigit():
+    if not text or len(text) < 2:
         await message.answer(t["reg_id_error"])
         return
 
-    id_card_num = int(text)
-    resident = await find_resident_by_id_card(id_card_num)
+    resident = await find_resident_by_id_card(text)
 
     if resident:
         if resident.vk_id and resident.vk_id != message.from_id:

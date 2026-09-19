@@ -115,7 +115,7 @@ class Resident
                     $this->first_name,
                     $this->patronymic,
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
-                    !empty($this->idcards) ? (int)$this->idcards : null,
+                    !empty($this->idcards) ? trim((string)$this->idcards) : null,
                     $this->notify_unconfirmed ? 1 : 0,
                     $this->is_banned ? 1 : 0,
                     $this->id
@@ -132,7 +132,7 @@ class Resident
                     $this->first_name,
                     $this->patronymic,
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
-                    !empty($this->idcards) ? (int)$this->idcards : null,
+                    !empty($this->idcards) ? trim((string)$this->idcards) : null,
                     $this->language ?? 'RU',
                     $this->notify_unconfirmed ? 1 : 0,
                     $this->is_banned ? 1 : 0
