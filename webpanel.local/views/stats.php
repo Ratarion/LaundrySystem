@@ -53,6 +53,41 @@ if (!function_exists('shortDormName')) {
     top: 0;
     z-index: 2;
 }
+.stats-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.stats-table th.sortable:hover {
+    background-color: #f1f5f9;
+    color: var(--primary);
+}
+.stats-table th.sortable .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.stats-table th.sortable .sort-icon {
+    font-size: 10px;
+    opacity: 0.35;
+    transition: opacity 0.15s ease, color 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.stats-table th.sortable:hover .sort-icon {
+    opacity: 0.85;
+    color: var(--primary);
+}
+.stats-table th.sortable.sorted-asc,
+.stats-table th.sortable.sorted-desc {
+    background-color: #eff6ff;
+    color: var(--primary);
+}
+.stats-table th.sortable.sorted-asc .sort-icon,
+.stats-table th.sortable.sorted-desc .sort-icon {
+    opacity: 1;
+    color: var(--primary);
+}
 .stats-table td {
     padding: 7px 6px;
     font-size: 13px;
@@ -228,18 +263,32 @@ if (!function_exists('shortDormName')) {
 
             <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 6px; border: 1px solid #e2e8f0; max-width: 100%; overflow: hidden;">
                 <div class="table-scroll" style="max-height: 420px; width: 100%; overflow-x: auto;">
-                    <table class="stats-table">
+                    <table class="stats-table" id="roomStatsTable">
                         <thead>
                             <tr>
-                                <th style="width: 32px; text-align: center;">№</th>
-                                <th>Комната</th>
+                                <th class="sortable" data-sort="index" data-type="number" style="width: 36px; text-align: center;" title="Нажмите для сортировки по порядку">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">№ <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="room" data-type="text" title="Нажмите для сортировки по номеру комнаты">
+                                    <div class="th-content">Комната <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
                                 <?php if (empty($dormitory_id)): ?>
-                                    <th style="text-align: center; width: 48px;">Общ.</th>
+                                    <th class="sortable" data-sort="dorm" data-type="text" style="text-align: center; width: 56px;" title="Нажмите для сортировки по общежитию">
+                                        <div class="th-content" style="justify-content: center; width: 100%;">Общ. <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                    </th>
                                 <?php endif; ?>
-                                <th style="text-align: center; width: 48px;">Всего</th>
-                                <th style="text-align: center; width: 44px;">Акт.</th>
-                                <th style="text-align: center; width: 44px;">Отм.</th>
-                                <th style="width: 75px; text-align: center;">Доля</th>
+                                <th class="sortable sorted-desc" data-sort="total" data-type="number" style="text-align: center; width: 56px;" title="Нажмите для сортировки по общему количеству">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Всего <span class="sort-icon"><i class="fa-solid fa-sort-down"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="active" data-type="number" style="text-align: center; width: 50px;" title="Нажмите для сортировки по активным записям">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Акт. <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="cancelled" data-type="number" style="text-align: center; width: 50px;" title="Нажмите для сортировки по отменённым записям">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Отм. <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="pct" data-type="number" style="width: 82px; text-align: center;" title="Нажмите для сортировки по доле">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Доля <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -255,24 +304,24 @@ if (!function_exists('shortDormName')) {
                                 foreach ($roomStats as $rItem): 
                                     $pct = $totalBookings ? round(($rItem['total'] / $totalBookings) * 100, 1) : 0;
                                 ?>
-                                <tr>
-                                    <td style="text-align: center; color: var(--text-muted); font-size: 11px;"><?= $rIdx++ ?></td>
-                                    <td style="font-weight: 700;">
+                                <tr data-orig-idx="<?= $rIdx ?>">
+                                    <td class="col-idx" style="text-align: center; color: var(--text-muted); font-size: 11px;" data-col="index" data-sort-value="<?= $rIdx ?>"><?= $rIdx++ ?></td>
+                                    <td style="font-weight: 700;" data-col="room" data-sort-value="<?= e($rItem['room']) ?>">
                                         <span class="badge" style="background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 700; padding: 2px 6px;">
                                             <i class="fa-solid fa-door-closed" style="color: #64748b; font-size: 10px;"></i> <?= e($rItem['room']) ?>
                                         </span>
                                     </td>
                                     <?php if (empty($dormitory_id)): ?>
-                                        <td style="text-align: center;">
+                                        <td style="text-align: center;" data-col="dorm" data-sort-value="<?= e($rItem['dormitory']) ?>">
                                             <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 2px 5px;" title="<?= e($rItem['dormitory']) ?>">
                                                 <?= e(shortDormName($rItem['dormitory'])) ?>
                                             </span>
                                         </td>
                                     <?php endif; ?>
-                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;"><?= $rItem['total'] ?></td>
-                                    <td style="text-align: center; font-weight: 600; color: var(--success); font-size: 12px;"><?= $rItem['active'] ?></td>
-                                    <td style="text-align: center; font-weight: 600; color: var(--danger); font-size: 12px;"><?= $rItem['cancelled'] ?></td>
-                                    <td style="text-align: center;">
+                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;" data-col="total" data-sort-value="<?= (int)$rItem['total'] ?>"><?= $rItem['total'] ?></td>
+                                    <td style="text-align: center; font-weight: 600; color: var(--success); font-size: 12px;" data-col="active" data-sort-value="<?= (int)$rItem['active'] ?>"><?= $rItem['active'] ?></td>
+                                    <td style="text-align: center; font-weight: 600; color: var(--danger); font-size: 12px;" data-col="cancelled" data-sort-value="<?= (int)$rItem['cancelled'] ?>"><?= $rItem['cancelled'] ?></td>
+                                    <td style="text-align: center;" data-col="pct" data-sort-value="<?= $pct ?>">
                                         <div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
                                             <div style="width: 36px; background: #e2e8f0; height: 5px; border-radius: 999px; overflow: hidden;">
                                                 <div style="width: <?= min(100, $pct * 3) ?>%; background: #6366f1; height: 100%; border-radius: 999px;"></div>
@@ -302,16 +351,26 @@ if (!function_exists('shortDormName')) {
 
             <div class="table-container" style="box-shadow: none; margin-bottom: 0; border-radius: 6px; border: 1px solid #e2e8f0; max-width: 100%; overflow: hidden;">
                 <div class="table-scroll" style="max-height: 420px; width: 100%; overflow-x: auto;">
-                    <table class="stats-table">
+                    <table class="stats-table" id="machineStatsTable">
                         <thead>
                             <tr>
-                                <th style="width: 32px; text-align: center;">№</th>
-                                <th>Оборудование</th>
+                                <th class="sortable" data-sort="index" data-type="number" style="width: 36px; text-align: center;" title="Нажмите для сортировки по порядку">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">№ <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="machine" data-type="text" title="Нажмите для сортировки по названию оборудования">
+                                    <div class="th-content">Оборудование <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
                                 <?php if (empty($dormitory_id)): ?>
-                                    <th style="text-align: center; width: 48px;">Общ.</th>
+                                    <th class="sortable" data-sort="dorm" data-type="text" style="text-align: center; width: 56px;" title="Нажмите для сортировки по общежитию">
+                                        <div class="th-content" style="justify-content: center; width: 100%;">Общ. <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                    </th>
                                 <?php endif; ?>
-                                <th style="text-align: center; width: 55px;">Стирок</th>
-                                <th style="width: 75px; text-align: center;">Доля</th>
+                                <th class="sortable sorted-desc" data-sort="total" data-type="number" style="text-align: center; width: 64px;" title="Нажмите для сортировки по количеству стирок">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Стирок <span class="sort-icon"><i class="fa-solid fa-sort-down"></i></span></div>
+                                </th>
+                                <th class="sortable" data-sort="pct" data-type="number" style="width: 82px; text-align: center;" title="Нажмите для сортировки по доле">
+                                    <div class="th-content" style="justify-content: center; width: 100%;">Доля <span class="sort-icon"><i class="fa-solid fa-sort"></i></span></div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -329,9 +388,9 @@ if (!function_exists('shortDormName')) {
                                     $isDryer = str_contains(mb_strtolower($mItem['type']), 'сушил');
                                     $mNum = !empty($mItem['number']) ? $mItem['number'] : (preg_match('/#(\d+)/', $mItem['name'], $nm) ? $nm[1] : $mItem['name']);
                                 ?>
-                                <tr>
-                                    <td style="text-align: center; color: var(--text-muted); font-size: 11px;"><?= $mIdx++ ?></td>
-                                    <td>
+                                <tr data-orig-idx="<?= $mIdx ?>">
+                                    <td class="col-idx" style="text-align: center; color: var(--text-muted); font-size: 11px;" data-col="index" data-sort-value="<?= $mIdx ?>"><?= $mIdx++ ?></td>
+                                    <td data-col="machine" data-sort-value="<?= e(($isDryer ? 'Сушилка ' : 'Стиралка ') . $mNum) ?>">
                                         <?php if ($isDryer): ?>
                                             <span class="badge" style="background: #cffafe; color: #0e7490; border: 1px solid #a5f3fc; font-size: 12px; font-weight: 700; padding: 3px 8px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;">
                                                 <i class="fa-solid fa-wind" style="font-size: 10px;"></i> Сушилка #<?= e($mNum) ?>
@@ -343,14 +402,14 @@ if (!function_exists('shortDormName')) {
                                         <?php endif; ?>
                                     </td>
                                     <?php if (empty($dormitory_id)): ?>
-                                        <td style="text-align: center;">
+                                        <td style="text-align: center;" data-col="dorm" data-sort-value="<?= e($mItem['dormitory']) ?>">
                                             <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 2px 5px;" title="<?= e($mItem['dormitory']) ?>">
                                                 <?= e(shortDormName($mItem['dormitory'])) ?>
                                             </span>
                                         </td>
                                     <?php endif; ?>
-                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;"><?= $mItem['total'] ?></td>
-                                    <td style="text-align: center;">
+                                    <td style="text-align: center; font-weight: 700; color: var(--primary); font-size: 13px;" data-col="total" data-sort-value="<?= (int)$mItem['total'] ?>"><?= $mItem['total'] ?></td>
+                                    <td style="text-align: center;" data-col="pct" data-sort-value="<?= $mPct ?>">
                                         <div style="display: flex; align-items: center; gap: 4px; justify-content: center;">
                                             <div style="width: 36px; background: #e2e8f0; height: 5px; border-radius: 999px; overflow: hidden;">
                                                 <div style="width: <?= min(100, $mPct * 3) ?>%; background: <?= $isDryer ? '#06b6d4' : '#6366f1' ?>; height: 100%; border-radius: 999px;"></div>
@@ -454,4 +513,80 @@ if (!function_exists('shortDormName')) {
             }
         });
     }
+
+    // 3. Интерактивная сортировка аналитических таблиц (по комнатам и оборудованию)
+    function initStatsTableSorting(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        const headers = table.querySelectorAll('th.sortable');
+        const tbody = table.querySelector('tbody');
+
+        headers.forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.getAttribute('data-sort');
+                const colType = th.getAttribute('data-type') || 'text';
+                const isCurrentlyAsc = th.classList.contains('sorted-asc');
+                const isCurrentlyDesc = th.classList.contains('sorted-desc');
+
+                let newDir = 'desc';
+                if (isCurrentlyDesc) {
+                    newDir = 'asc';
+                } else if (isCurrentlyAsc) {
+                    newDir = 'desc';
+                } else {
+                    // Текстовые поля и № начинают с 'asc' (по возрастанию/алфавиту), числа — с 'desc' (по убыванию)
+                    newDir = (colType === 'text' || col === 'index') ? 'asc' : 'desc';
+                }
+
+                // Сброс активных классов и иконок на всех заголовках таблицы
+                headers.forEach(h => {
+                    h.classList.remove('sorted-asc', 'sorted-desc');
+                    const icon = h.querySelector('.sort-icon i');
+                    if (icon) icon.className = 'fa-solid fa-sort';
+                });
+
+                // Установка активного состояния для выбранного заголовка
+                th.classList.add(newDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                const icon = th.querySelector('.sort-icon i');
+                if (icon) {
+                    icon.className = newDir === 'asc' ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down';
+                }
+
+                // Извлечение строк с данными (пропускаем строку "Нет записей")
+                const rows = Array.from(tbody.querySelectorAll('tr[data-orig-idx]'));
+                if (!rows.length) return;
+
+                rows.sort((rowA, rowB) => {
+                    let cellA = rowA.querySelector(`[data-col="${col}"]`);
+                    let cellB = rowB.querySelector(`[data-col="${col}"]`);
+
+                    let valA = cellA ? cellA.getAttribute('data-sort-value') : '';
+                    let valB = cellB ? cellB.getAttribute('data-sort-value') : '';
+
+                    if (colType === 'number') {
+                        const numA = parseFloat(valA) || 0;
+                        const numB = parseFloat(valB) || 0;
+                        return newDir === 'asc' ? numA - numB : numB - numA;
+                    } else {
+                        // Естественная алфавитно-числовая сортировка (например, 102 vs 201 vs 1001)
+                        const cmp = String(valA).localeCompare(String(valB), 'ru', { numeric: true, sensitivity: 'base' });
+                        return newDir === 'asc' ? cmp : -cmp;
+                    }
+                });
+
+                // Перерисовка отсортированных строк с обновлением визуальной нумерации №
+                rows.forEach((row, i) => {
+                    tbody.appendChild(row);
+                    const idxCell = row.querySelector('.col-idx');
+                    if (idxCell) {
+                        idxCell.textContent = i + 1;
+                    }
+                });
+            });
+        });
+    }
+
+    initStatsTableSorting('roomStatsTable');
+    initStatsTableSorting('machineStatsTable');
 </script>
