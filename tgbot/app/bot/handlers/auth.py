@@ -171,9 +171,11 @@ async def process_id_card_auth(message: Message, state: FSMContext):
 @auth_router.callback_query(F.data == "settings_menu")
 async def process_settings_menu(callback: CallbackQuery, state: FSMContext):
     """
-    Меню настроек: уведомления и смена языка
+    Меню настроек: уведомления, смена языка и сообщить о проблеме
     """
     lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
+    await state.clear()
+    await state.update_data(lang=lang)
     text = t.get("settings_title", "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:")
     try:
         await callback.message.edit_text(

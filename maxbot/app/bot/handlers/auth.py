@@ -216,6 +216,7 @@ async def process_id_card_auth(message: Message, cursor: fsm.FSMCursor):
 
 @auth_router.on_button_callback(lambda cb: _is_cmd(cb, "settings_menu"))
 async def process_settings_menu(cb: Callback, cursor: fsm.FSMCursor):
+    cursor.clear_state()
     user_id = cb.user.user_id
     lang, t = await get_lang_and_texts(user_id, cursor=cursor)
     text = t.get("settings_title", "⚙️ Настройки:\n\nВыберите нужный раздел:")

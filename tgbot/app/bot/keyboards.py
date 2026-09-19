@@ -48,7 +48,6 @@ def get_section_keyboard(lang: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text=t["cancel_record"], callback_data="remove_records")],
             [InlineKeyboardButton(text=t.get("web_panel", "🌐 Перейти на сайт"), url="http://webpanel.beget.tech")],
             [InlineKeyboardButton(text=t.get("settings", "⚙️ Настройки"), callback_data="settings_menu")],
-            [InlineKeyboardButton(text=t["report_in_admin"], callback_data="report")],
         ]
     )
 
@@ -58,6 +57,7 @@ def get_settings_keyboard(lang: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text=t.get("notifications_menu", "🔔 Уведомления"), callback_data="notifications_menu")],
             [InlineKeyboardButton(text=t.get("change_language", "🌐 Сменить язык"), callback_data="change_language")],
+            [InlineKeyboardButton(text=t["report_in_admin"], callback_data="report")],
             [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
         ]
     )
@@ -156,6 +156,12 @@ def get_back_to_sections_keyboard(lang: str) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=t.get("back", "Назад"), callback_data="back_to_sections")]
+    ])
+
+def get_back_to_settings_keyboard(lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=t.get("back", "Назад"), callback_data="settings_menu")]
     ])
 
 def get_cancel_booking_keyboard(bookings: list, lang: str) -> InlineKeyboardMarkup:

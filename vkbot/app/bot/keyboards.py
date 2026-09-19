@@ -69,8 +69,6 @@ def get_section_keyboard(lang: str) -> str:
         .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
         .add(Callback(t.get("settings", "⚙️ Настройки"), {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
-        .row()
-        .add(Callback(t["report_in_admin"], {"cmd": "report"}), color=KeyboardButtonColor.NEGATIVE)
     )
     return kb.get_json()
 
@@ -82,6 +80,8 @@ def get_settings_keyboard(lang: str) -> str:
         .add(Callback(t.get("notifications_menu", "🔔 Уведомления"), {"cmd": "notifications_menu"}), color=KeyboardButtonColor.PRIMARY)
         .row()
         .add(Callback(t.get("change_language", "🌐 Сменить язык"), {"cmd": "change_language"}), color=KeyboardButtonColor.SECONDARY)
+        .row()
+        .add(Callback(t.get("report_in_admin", "🛠️ Сообщить о проблеме"), {"cmd": "report"}), color=KeyboardButtonColor.NEGATIVE)
         .row()
         .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
     )
@@ -171,6 +171,14 @@ def get_back_to_sections_keyboard(lang: str) -> str:
     t = _t(lang)
     kb = Keyboard(inline=True).add(
         Callback(t.get("back", "Назад"), {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY
+    )
+    return kb.get_json()
+
+
+def get_back_to_settings_keyboard(lang: str) -> str:
+    t = _t(lang)
+    kb = Keyboard(inline=True).add(
+        Callback(t.get("back", "Назад"), {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY
     )
     return kb.get_json()
 

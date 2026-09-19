@@ -42,7 +42,6 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
     kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
     kb.row(CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"))
-    kb.row(CallbackButton(t["report_in_admin"], _payload("report"), intent="negative"))
     return kb
 
 
@@ -51,6 +50,7 @@ def get_settings_keyboard(lang: str) -> KeyboardBuilder:
     kb = KeyboardBuilder()
     kb.row(CallbackButton(t.get("notifications_menu", "🔔 Уведомления"), _payload("notifications_menu"), intent="default"))
     kb.row(CallbackButton(t.get("change_language", "🌐 Сменить язык"), _payload("change_language"), intent="default"))
+    kb.row(CallbackButton(t.get("report_in_admin", "🛠️ Сообщить о проблеме"), _payload("report"), intent="negative"))
     kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
 
@@ -140,6 +140,13 @@ def get_back_to_sections_keyboard(lang: str) -> KeyboardBuilder:
     t = _t(lang)
     kb = KeyboardBuilder()
     kb.row(CallbackButton(t.get("back", "Назад"), _payload("back_to_sections"), intent="default"))
+    return kb
+
+
+def get_back_to_settings_keyboard(lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t.get("back", "Назад"), _payload("settings_menu"), intent="default"))
     return kb
 
 

@@ -158,8 +158,10 @@ async def process_id_card_auth(message: Message):
 
 @auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "settings_menu"}))
 async def process_settings_menu(event: MessageEvent):
-    """Меню настроек: уведомления и смена языка"""
+    """Меню настроек: уведомления, смена языка и сообщить о проблеме"""
+    await clear_state(event.peer_id)
     lang, t = await get_lang_and_texts(event.peer_id)
+    await update_state_data(event.peer_id, lang=lang)
     text = t.get("settings_title", "⚙️ Настройки:\n\nВыберите нужный раздел:")
     await event.edit_message(text, keyboard=get_settings_keyboard(lang))
 

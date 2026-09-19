@@ -3,7 +3,7 @@ from vkbottle.bot import BotLabeler, Message, MessageEvent
 from vkbottle.dispatch.rules.base import PayloadContainsRule, StateRule
 
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_section_keyboard, get_back_to_sections_keyboard
+from app.bot.keyboards import get_section_keyboard, get_back_to_settings_keyboard
 from app.bot.states import Report
 from app.laundry_repo import get_user_by_vk_id, create_notification
 from app.bot.utils.fsm import set_state, clear_state
@@ -19,7 +19,7 @@ async def report_problem(event: MessageEvent):
     lang, t = await get_lang_and_texts(peer_id)
     await event.edit_message(
         t.get("report_prompt", "Укажите номер и тип машинки и опишите проблему:"),
-        keyboard=get_back_to_sections_keyboard(lang),
+        keyboard=get_back_to_settings_keyboard(lang),
     )
     await set_state(peer_id, Report.waiting_for_report)
 
@@ -40,7 +40,7 @@ async def process_report(message: Message):
     if len(report_text) > MAX_REPORT_LENGTH:
         await message.answer(
             t.get("report_too_long", "Сообщение слишком длинное."),
-            keyboard=get_back_to_sections_keyboard(lang),
+            keyboard=get_back_to_settings_keyboard(lang),
         )
         return
 
@@ -48,7 +48,7 @@ async def process_report(message: Message):
 
     await message.answer(
         t.get("report_sent", "Сообщение отправлено."),
-        keyboard=get_back_to_sections_keyboard(lang),
+        keyboard=get_back_to_settings_keyboard(lang),
     )
     # Состояние намеренно не сбрасываем: бот ждёт нажатия "Назад"
     # (или следующего сообщения, если решат отправить ещё один репорт) — как и в tg-версии.

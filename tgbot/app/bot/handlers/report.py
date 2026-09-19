@@ -2,7 +2,7 @@ from aiogram import Router, F, Bot
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_section_keyboard, get_back_to_sections_keyboard
+from app.bot.keyboards import get_section_keyboard, get_settings_keyboard, get_back_to_sections_keyboard, get_back_to_settings_keyboard
 from app.bot.states import Report
 from app.repositories.laundry_repo import get_user_by_tg_id, create_notification
 
@@ -16,7 +16,7 @@ async def report_problem(callback: CallbackQuery, state: FSMContext):
     # Добавляем кнопку "Назад" к сообщению с просьбой описать проблему
     await callback.message.edit_text(
         t.get("report_prompt", "Укажите номер и тип машинки и опишите проблему:"), 
-        reply_markup=get_back_to_sections_keyboard(lang)
+        reply_markup=get_back_to_settings_keyboard(lang)
     )
     await state.set_state(Report.waiting_for_report)
     await callback.answer()
@@ -40,39 +40,49 @@ async def process_report(message: Message, state: FSMContext, bot: Bot):
     if len(report_text) > MAX_REPORT_LENGTH:  # Проверка длины
         await message.answer(
             t.get("report_too_long", "Сообщение слишком длинное."),
-            reply_markup=get_back_to_sections_keyboard(lang)
+            reply_markup=get_back_to_settings_keyboard(lang)
         )
         # Остаемся в состоянии, чтобы пользователь мог отправить короче
         return
     
     await create_notification(resident_id=user.id, description=report_text)
     
-    # Отправляем подтверждение с кнопкой "Назад" вместо главного меню
+    # Отправляем подтверждение с кнопкой "Назад" в меню настроек
     await message.answer(
         t.get("report_sent", "Сообщение отправлено."), 
-        reply_markup=get_back_to_sections_keyboard(lang)
+        reply_markup=get_back_to_settings_keyboard(lang)
     )
     # Важно: мы НЕ делаем state.clear() здесь, чтобы бот ждал нажатия кнопки "Назад" 
     # (или следующего сообщения, если пользователь решит отправить еще один репорт).
 
 # Обработка нажатия "Назад" из состояния Report
-@report_router.callback_query(F.data == "back_to_sections", Report.waiting_for_report)
+@report_router.callback_query(F.data.in_(["back_to_sections", "back_to_settings", "settings_menu"]), Report.waiting_for_report)
 async def back_from_report(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
-    
-    # ДОБАВЛЕНО: Получаем user из БД
-    user = await get_user_by_tg_id(callback.from_user.id)
-    if not user:
-        await callback.answer(t["none_user"], show_alert=True)
-        return
-    
-    # Сбрасываем состояние и восстанавливаем язык
     await state.clear()
     await state.update_data(lang=lang)
-
-    # Возвращаем пользователя в главное меню
-    await callback.message.edit_text(
-        t["hello_user"].format(name=user.first_name),  # ИЗМЕНЕНО: из БД
-        reply_markup=get_section_keyboard(lang)
-    )
+    
+    if callback.data == "back_to_sections":
+        user = await get_user_by_tg_id(callback.from_user.id)
+        if not user:
+            await callback.answer(t["none_user"], show_alert=True)
+            return
+        await callback.message.edit_text(
+            t["hello_user"].format(name=user.first_name),
+            reply_markup=get_section_keyboard(lang)
+        )
+    else:
+        text = t.get("settings_title", "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:")
+        try:
+            await callback.message.edit_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=get_settings_keyboard(lang)
+            )
+        except Exception:
+            await callback.message.answer(
+                text,
+                parse_mode="HTML",
+                reply_markup=get_settings_keyboard(lang)
+            )
     await callback.answer()

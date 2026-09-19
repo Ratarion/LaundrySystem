@@ -4,7 +4,7 @@ import aiomax
 from aiomax import Router, Message, Callback, fsm
 
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_section_keyboard, get_back_to_sections_keyboard
+from app.bot.keyboards import get_section_keyboard, get_back_to_settings_keyboard
 from app.bot.states import Report
 from app.laundry_repo import get_user_by_max_id, create_notification
 
@@ -28,7 +28,7 @@ async def report_problem(cb: Callback, cursor: fsm.FSMCursor):
 
     await cb.answer(
         text=t.get("report_prompt", "Укажите номер и тип машинки и опишите проблему:"),
-        keyboard=get_back_to_sections_keyboard(lang),
+        keyboard=get_back_to_settings_keyboard(lang),
     )
     cursor.change_state(Report.waiting_for_report)
 
@@ -49,7 +49,7 @@ async def process_report(message: Message, cursor: fsm.FSMCursor):
     if len(report_text) > MAX_REPORT_LENGTH:
         await message.reply(
             t.get("report_too_long", "Сообщение слишком длинное."),
-            keyboard=get_back_to_sections_keyboard(lang),
+            keyboard=get_back_to_settings_keyboard(lang),
         )
         return
 
@@ -57,5 +57,5 @@ async def process_report(message: Message, cursor: fsm.FSMCursor):
 
     await message.reply(
         t.get("report_sent", "Сообщение отправлено администрации."),
-        keyboard=get_back_to_sections_keyboard(lang),
+        keyboard=get_back_to_settings_keyboard(lang),
     )
