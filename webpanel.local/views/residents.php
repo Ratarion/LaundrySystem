@@ -200,7 +200,7 @@
                         <th style="text-align: center; width: 140px;">Боты</th>
                         <th style="text-align: center; width: 140px;">Свободные слоты</th>
                         <th style="text-align: center; width: 130px;">Доступ</th>
-                        <th style="text-align: center; width: 270px;">Действия</th>
+                        <th style="text-align: center; width: 160px;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -260,20 +260,24 @@
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center; white-space: nowrap;">
-                            <a href="/residents?edit=<?= $r->id ?>" class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin-right:4px;">Редактировать</a>
+                            <a href="/residents?edit=<?= $r->id ?>" class="btn" style="background-color: #2563eb; border-color: #1d4ed8; color: #fff; padding: 6px 11px; font-size: 13px; margin-right: 4px; border-radius: 6px;" title="Редактировать жителя">
+                                <i class="fa-solid fa-pen"></i>
+                            </a>
                             
                             <form method="POST" style="display:inline; margin-right:4px;" onsubmit="return confirm('<?= !empty($r->is_banned) ? ('Разблокировать жителя ' . e($residentFio) . '?') : ('Заблокировать жителя ' . e($residentFio) . '? Он не сможет записываться на стирку.') ?>')">
                                 <input type="hidden" name="toggle_ban_id" value="<?= $r->id ?>">
                                 <?php if (!empty($r->is_banned)): ?>
-                                    <button type="submit" class="btn btn-success" style="padding:6px 12px; font-size:13px;" title="Разблокировать доступ"><i class="fa-solid fa-unlock"></i> Разбан</button>
+                                    <button type="submit" class="btn btn-success" style="padding:6px 10px; font-size:13px;" title="Разблокировать доступ"><i class="fa-solid fa-unlock"></i> Разбан</button>
                                 <?php else: ?>
-                                    <button type="submit" class="btn" style="padding:6px 12px; font-size:13px; background-color: #f59e0b; border-color: #d97706; color: #fff;" title="Заблокировать запись"><i class="fa-solid fa-ban"></i> Бан</button>
+                                    <button type="submit" class="btn" style="padding:6px 10px; font-size:13px; background-color: #f59e0b; border-color: #d97706; color: #fff;" title="Заблокировать запись"><i class="fa-solid fa-ban"></i> Бан</button>
                                 <?php endif; ?>
                             </form>
 
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить жителя <?= e($residentFio) ?>?')">
                                 <input type="hidden" name="delete_id" value="<?= $r->id ?>">
-                                <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:13px;">Удалить</button>
+                                <button type="submit" class="btn btn-danger" style="padding: 6px 11px; font-size: 13px; border-radius: 6px;" title="Удалить жителя">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
                             </form>
                         </td>
                     </tr>
