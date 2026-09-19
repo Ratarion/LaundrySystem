@@ -21,7 +21,7 @@ class VkNotifier
      * @param string $message Текст сообщения
      * @return bool Успешна ли отправка
      */
-    public function sendMessage($userId, $message)
+    public function sendMessage($userId, $message, $keyboard = null)
     {
         if (empty($this->token) || empty($userId)) {
             error_log("VK API Error: Token or UserID is empty");
@@ -35,6 +35,10 @@ class VkNotifier
             'access_token' => $this->token,
             'v' => $this->version
         ];
+
+        if (!empty($keyboard)) {
+            $params['keyboard'] = is_array($keyboard) ? json_encode($keyboard, JSON_UNESCAPED_UNICODE) : $keyboard;
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->apiUrl . 'messages.send');

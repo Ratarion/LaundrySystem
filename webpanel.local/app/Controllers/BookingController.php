@@ -69,7 +69,7 @@ class BookingController extends BaseController
                                  . "Ваше бронирование (<b>{$typeStr} машина №{$numStr}</b>{$dormStr} на <b>{$timeStr}</b>) было отменено администратором.\n\n"
                                  . "💬 <b>Причина отмены:</b> " . htmlspecialchars($reason, ENT_QUOTES, 'UTF-8');
                         
-                        $res = $botNotifier->notifyResident($b, $msg);
+                        $res = $botNotifier->notifyResident($b, $msg, true);
                         if (!empty($res['tg']) || !empty($res['vk']) || !empty($res['max'])) {
                             $notifiedCount++;
                         }
@@ -141,7 +141,7 @@ class BookingController extends BaseController
                             'tg_id'  => $booking->tg_id,
                             'vk_id'  => $booking->vk_id,
                             'max_id' => $booking->max_id,
-                        ], $msg);
+                        ], $msg, true);
 
                         // Сохраняем уведомление в БД
                         try {

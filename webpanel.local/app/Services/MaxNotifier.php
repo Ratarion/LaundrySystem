@@ -19,7 +19,7 @@ class MaxNotifier
      * @param string $format Формат текста ('html' или 'markdown')
      * @return bool Успешна ли отправка
      */
-    public function sendMessage($userId, $message, $format = 'html')
+    public function sendMessage($userId, $message, $format = 'html', $attachments = null)
     {
         if (empty($this->token)) {
             error_log("MAX API Error: MAX_TOKEN is empty");
@@ -41,6 +41,10 @@ class MaxNotifier
             'format' => $format,
             'notify' => true,
         ];
+
+        if (!empty($attachments)) {
+            $payload['attachments'] = $attachments;
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);

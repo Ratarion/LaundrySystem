@@ -88,25 +88,33 @@ async def process_record_start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@booking_router.callback_query(F.data.in_(["wash", "dry"]), AddRecord.waiting_for_machine_type)
+@booking_router.callback_query(F.data.in_(["wash", "dry", "type_WASH", "type_DRY", "type_wash", "type_dry", "WASH", "DRY"]))
 async def process_machine_type(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
-    machine_type_callback = callback.data.upper() # "WASH" или "DRY"
-    data = await state.get_data()
-    dormitory_id = data.get('dormitory_id', 1)
+    raw = (callback.data or "").upper()
     
-    # ПРИВЯЗЫВАЕМСЯ К ЗНАЧЕНИЯМ В БД (они у тебя на русском)
-    if machine_type_callback == "WASH":
+    # Привязываемся к значениям в БД
+    if "WASH" in raw:
         machine_type_db = "Стиральная"
     else:
         machine_type_db = "Сушильная"
+
+    user = await get_user_by_tg_id(callback.from_user.id)
+    if not user:
+        await callback.answer(t.get("none_user", "Пользователь не найден"), show_alert=True)
+        return
+
+    if getattr(user, "is_banned", False):
+        await callback.answer(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."), show_alert=True)
+        return
+
+    data = await state.get_data()
+    dormitory_id = data.get('dormitory_id') or getattr(user, "dormitory_id", 1) or 1
     header_text = get_calendar_header_with_legend(t, machine_type_db, lang)
 
-    # Теперь в state и в запросы улетит "Стиральная", и БД найдет машины
-    await state.update_data(machine_type=machine_type_db)
-    
+    await state.update_data(user_id=user.id, dormitory_id=dormitory_id, machine_type=machine_type_db)
+
     now = get_kemerovo_now()
-    # Теперь эти функции получат правильный тип и вернут реальные цифры, а не 0
     workload = await get_month_workload(now.year, now.month, machine_type_db, dormitory_id=dormitory_id)
     max_capacity = await get_total_daily_capacity_by_type(machine_type_db, dormitory_id=dormitory_id)
     
@@ -299,18 +307,26 @@ async def process_machine(callback: CallbackQuery, state: FSMContext):
     await state.update_data(lang=lang)
 
 
-@booking_router.callback_query(F.data == "back_to_sections", AddRecord.waiting_for_machine_type)
+@booking_router.callback_query(F.data == "back_to_sections")
 async def process_back_to_sections(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
     user = await get_user_by_tg_id(callback.from_user.id)
     
-    db_name = user.first_name 
+    db_name = user.first_name if user else (callback.from_user.first_name or "")
 
-    await callback.message.edit_text(
-        t["hello_user"].format(name=db_name),
-        reply_markup=get_section_keyboard(lang)
-    )
     await state.clear()
+    await state.update_data(lang=lang)
+
+    try:
+        await callback.message.edit_text(
+            t["hello_user"].format(name=db_name),
+            reply_markup=get_section_keyboard(lang)
+        )
+    except Exception:
+        await callback.message.answer(
+            t["hello_user"].format(name=db_name),
+            reply_markup=get_section_keyboard(lang)
+        )
     await callback.answer()
 
 

@@ -23,7 +23,7 @@ class TelegramNotifier
      * @param string $parseMode Режим парсинга (HTML по умолчанию)
      * @return bool Успешна ли отправка
      */
-    public function sendMessage($chatId, $message, $parseMode = 'HTML')
+    public function sendMessage($chatId, $message, $parseMode = 'HTML', $replyMarkup = null)
     {
         if (empty($this->token)) {
             error_log("Telegram API Error: TG_BOT_TOKEN is empty");
@@ -47,6 +47,10 @@ class TelegramNotifier
             'text'       => $message,
             'parse_mode' => $parseMode,
         ];
+
+        if (!empty($replyMarkup)) {
+            $params['reply_markup'] = is_array($replyMarkup) ? json_encode($replyMarkup) : $replyMarkup;
+        }
 
         foreach ($endpoints as $baseEndpoint) {
             $url = $baseEndpoint . $this->token . '/sendMessage';
