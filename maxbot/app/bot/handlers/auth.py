@@ -53,37 +53,87 @@ async def _send_main_menu(user_id: int, user, lang: str, t: dict, cb: Optional[C
 @auth_router.on_bot_start()
 async def on_bot_start_event(payload: BotStartPayload, cursor: fsm.FSMCursor):
     user_id = payload.user.user_id
-    data = cursor.get_data() or {}
+    existing_user = await get_user_by_max_id(user_id)
 
+    if existing_user:
+        lang = (existing_user.language or "RU").strip().upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        data = cursor.get_data() or {}
+        data["lang"] = lang
+        cursor.change_data(data)
+        cursor.clear_state()
+
+        t = ALL_TEXTS[lang]
+        text = t["hello_user"].format(name=existing_user.first_name)
+        kb = get_section_keyboard(lang)
+        await payload.send(text, keyboard=kb)
+        return
+
+    data = cursor.get_data() or {}
     if "lang" not in data:
         await payload.send(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
-        await _cmd_start_auth(user_id, cursor=cursor)
+        lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+        await payload.send(t["auth"])
+        cursor.change_state(Auth.waiting_for_fio)
 
 
 @auth_router.on_command("start")
 async def cmd_start(ctx: CommandContext, cursor: fsm.FSMCursor):
     user_id = ctx.sender.user_id
-    data = cursor.get_data() or {}
+    existing_user = await get_user_by_max_id(user_id)
 
+    if existing_user:
+        lang = (existing_user.language or "RU").strip().upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        data = cursor.get_data() or {}
+        data["lang"] = lang
+        cursor.change_data(data)
+        cursor.clear_state()
+
+        t = ALL_TEXTS[lang]
+        text = t["hello_user"].format(name=existing_user.first_name)
+        kb = get_section_keyboard(lang)
+        await ctx.reply(text, keyboard=kb)
+        return
+
+    data = cursor.get_data() or {}
     if "lang" not in data:
         await ctx.reply(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
-        await _cmd_start_auth(user_id, cursor=cursor)
+        lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+        await ctx.reply(t["auth"])
+        cursor.change_state(Auth.waiting_for_fio)
 
 
-async def _cmd_start_auth(user_id: int, cursor: fsm.FSMCursor):
+@auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in ["/start", "старт", "start", "начать"])
+async def cmd_start_text(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
     existing_user = await get_user_by_max_id(user_id)
-    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
 
     if existing_user:
-        if existing_user.language != lang:
-            await update_user_language(user_id, lang)
+        lang = (existing_user.language or "RU").strip().upper()
+        if lang not in ALL_TEXTS:
+            lang = "RU"
+        data = cursor.get_data() or {}
+        data["lang"] = lang
+        cursor.change_data(data)
+        cursor.clear_state()
+
+        t = ALL_TEXTS[lang]
         text = t["hello_user"].format(name=existing_user.first_name)
         kb = get_section_keyboard(lang)
-        await cursor.storage.bot.send_message(user_id=user_id, text=text, keyboard=kb)
+        await message.reply(text=text, keyboard=kb)
+        return
+
+    data = cursor.get_data() or {}
+    if "lang" not in data:
+        await message.reply(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
     else:
-        await cursor.storage.bot.send_message(user_id=user_id, text=t["auth"])
+        lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+        await message.reply(t["auth"])
         cursor.change_state(Auth.waiting_for_fio)
 
 

@@ -6,12 +6,11 @@ ALL_TEXTS = {**ru.RUtexts, **en.ENtexts, **cn.CNtexts}
 
 
 async def get_lang_and_texts(user_id: int, cursor=None) -> Tuple[str, dict]:
-    lang = "RU"
+    lang = None
     if cursor is not None:
         data = cursor.get_data()
         if isinstance(data, dict) and "lang" in data:
             lang = data["lang"]
-            return lang, ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
 
     if not lang or lang not in ALL_TEXTS:
         user = await get_user_by_max_id(user_id)
