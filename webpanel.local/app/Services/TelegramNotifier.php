@@ -9,6 +9,10 @@ class TelegramNotifier
     public function __construct()
     {
         $this->token = $_ENV['TG_BOT_TOKEN'] ?? $_SERVER['TG_BOT_TOKEN'] ?? getenv('TG_BOT_TOKEN') ?? '';
+        $customApi = $_ENV['TG_API_URL'] ?? $_SERVER['TG_API_URL'] ?? getenv('TG_API_URL') ?? '';
+        if (!empty($customApi)) {
+            $this->apiUrl = rtrim($customApi, '/') . '/bot';
+        }
     }
 
     /**
@@ -31,7 +35,12 @@ class TelegramNotifier
             return false;
         }
 
-        $url = $this->apiUrl . $this->token . '/sendMessage';
+        $endpoints = [$this->apiUrl];
+        // Если настроен forwarder-туннель внутри docker (172.18.0.1:8088), добавляем его в список попыток
+        $forwarderUrl = 'http://172.18.0.1:8088/bot';
+        if ($this->apiUrl !== $forwarderUrl) {
+            $endpoints[] = $forwarderUrl;
+        }
 
         $params = [
             'chat_id'    => $chatId,
@@ -39,30 +48,35 @@ class TelegramNotifier
             'parse_mode' => $parseMode,
         ];
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        foreach ($endpoints as $baseEndpoint) {
+            $url = $baseEndpoint . $this->token . '/sendMessage';
 
-        $response = curl_exec($ch);
-        $error = curl_error($ch);
-        curl_close($ch);
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-        if ($error) {
-            error_log("Telegram API cURL Error: " . $error);
-            return false;
-        }
+            $response = curl_exec($ch);
+            $error = curl_error($ch);
+            curl_close($ch);
 
-        $data = json_decode($response, true);
-        if (!$data || !($data['ok'] ?? false)) {
+            if ($error) {
+                error_log("Telegram API cURL Error ({$baseEndpoint}): " . $error);
+                continue;
+            }
+
+            $data = json_decode($response, true);
+            if ($data && ($data['ok'] ?? false)) {
+                return true;
+            }
+
             $desc = $data['description'] ?? 'Unknown Telegram API Error';
-            error_log("Telegram API Response Error: " . $desc . " (chat_id: {$chatId})");
-            return false;
+            error_log("Telegram API Response Error ({$baseEndpoint}): " . $desc . " (chat_id: {$chatId})");
         }
 
-        return true;
+        return false;
     }
 }

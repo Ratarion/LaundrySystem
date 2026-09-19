@@ -15,7 +15,7 @@ ENtexts = {
         "back": "Back",
         "settings": "⚙️ Settings",
         "settings_title": "⚙️ Settings\n\nSelect a section:",
-        "user_banned_alert": "❌ Your account is blocked. Laundry booking is unavailable. Please contact the administrator.",
+        "user_banned_alert": "❌ Your account is blocked. Laundry booking is unavailable. Please contact the dormitory elder or administrator.",
         "change_language": "🌐 Change language",
         "notifications_menu": "🔔 Notifications",
         "notifications_settings_title": (

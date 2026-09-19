@@ -3,6 +3,8 @@ namespace App\Controllers;
 
 use Models\Resident;
 use Models\Dormitory;
+use Models\Notification;
+use App\Services\BotNotifier;
 
 class ResidentController extends BaseController
 {
@@ -51,6 +53,9 @@ class ResidentController extends BaseController
                     $this->redirect("/residents?error=" . urlencode('Вы можете редактировать только жителей своего общежития!'));
                 }
 
+                $wasBanned = (bool)$resident->is_banned;
+                $newBanned = (isset($_POST['is_banned']) && (string)$_POST['is_banned'] === '1');
+
                 $resident->dormitory_id = $sessionDormId !== null ? $sessionDormId : (int)($_POST['dormitory_id'] ?? 1);
                 $resident->last_name    = trim($_POST['last_name'] ?? '');
                 $resident->first_name   = trim($_POST['first_name'] ?? '');
@@ -58,10 +63,16 @@ class ResidentController extends BaseController
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
                 $resident->notify_unconfirmed = (isset($_POST['notify_unconfirmed']) && (string)$_POST['notify_unconfirmed'] === '1');
-                $resident->is_banned = (isset($_POST['is_banned']) && (string)$_POST['is_banned'] === '1');
+                $resident->is_banned = $newBanned;
                 if ($resident->save()) {
                     $this->log->info('Отредактирован житель', ['id' => $resident->id, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Данные жителя обновлены!';
+                    if ($wasBanned !== $newBanned) {
+                        $notifyResult = $this->sendBanNotification($resident);
+                        if ($notifyResult) {
+                            $successMessage .= " {$notifyResult}";
+                        }
+                    }
                 } else {
                     $errorMessage = $resident->getLastError() ?: 'Ошибка при сохранении жителя.';
                 }
@@ -77,7 +88,9 @@ class ResidentController extends BaseController
                     if ($resident->save()) {
                         $action = $resident->is_banned ? 'заблокирован' : 'разблокирован';
                         $this->log->info("Житель {$action}", ['id' => $resident->id, 'role' => $roleName]);
-                        $successMessage = "Житель успешно {$action}!";
+                        
+                        $notifyResult = $this->sendBanNotification($resident);
+                        $successMessage = "Житель успешно {$action}!" . ($notifyResult ? " {$notifyResult}" : "");
                     } else {
                         $errorMessage = 'Ошибка при изменении статуса жителя.';
                     }
@@ -158,5 +171,74 @@ class ResidentController extends BaseController
             'success'       => $_GET['success'] ?? null,
             'error'         => $errorMessage ?: ($_GET['error'] ?? null)
         ]);
+    }
+
+    /**
+     * Отправка уведомления жителю при изменении статуса блокировки
+     * 
+     * @param Resident $resident
+     * @return string Текстовый статус доставки в боты
+     */
+    private function sendBanNotification(Resident $resident): string
+    {
+        $lang = strtoupper(trim($resident->language ?? 'RU'));
+
+        if ($resident->is_banned) {
+            // Текст при блокировке
+            if ($lang === 'EN') {
+                $msgHtml = "🚫 <b>Laundry booking access suspended</b>\n\nYour account has been suspended by the administration. Laundry booking is unavailable.\n\nPlease contact your dormitory elder or administrator.";
+                $plainDesc = "Доступ заблокирован администратором. Обратитесь к старосте/администратору.";
+            } elseif ($lang === 'CN') {
+                $msgHtml = "🚫 <b>洗衣预约权限已暂停</b>\n\n您的账号已被管理员封禁，无法预约洗衣。\n\n如有疑问，请联系宿舍长或管理员。";
+                $plainDesc = "账号已被管理员封禁，请联系宿舍长或管理员。";
+            } else {
+                $msgHtml = "🚫 <b>Доступ к записи на стирку заблокирован</b>\n\nВаш аккаунт заблокирован администратором. Запись на стирку недоступна.\n\nПожалуйста, обратитесь к старосте или администратору общежития.";
+                $plainDesc = "Доступ заблокирован администратором. Обратитесь к старосте или администратору.";
+            }
+        } else {
+            // Текст при разблокировке
+            if ($lang === 'EN') {
+                $msgHtml = "✅ <b>Laundry booking access restored</b>\n\nYour laundry booking access has been restored. You can now book laundry slots again.";
+                $plainDesc = "Доступ к записи на стирку восстановлен.";
+            } elseif ($lang === 'CN') {
+                $msgHtml = "✅ <b>洗衣预约权限已恢复</b>\n\n您的洗衣预约权限已恢复，现在可以重新预约洗衣。";
+                $plainDesc = "洗衣预约权限已恢复。";
+            } else {
+                $msgHtml = "✅ <b>Доступ к записи на стирку разблокирован</b>\n\nВаш доступ к записи на стирку восстановлен. Теперь вы снова можете бронировать стирку.";
+                $plainDesc = "Доступ к записи на стирку восстановлен.";
+            }
+        }
+
+        // 1. Сохраняем уведомление в БД (таблица notifications)
+        try {
+            $notification = new Notification($this->pdo);
+            $notification->id_residents = $resident->id;
+            $notification->description  = $plainDesc;
+            $notification->save();
+        } catch (\Exception $e) {
+            $this->log->error('Ошибка сохранения уведомления о бане в БД: ' . $e->getMessage());
+        }
+
+        // 2. Отправляем через BotNotifier во все подключенные мессенджеры жителя
+        $botNotifier = new BotNotifier();
+        $sendResults = $botNotifier->notifyResident([
+            'id'     => $resident->id,
+            'tg_id'  => $resident->tg_id,
+            'vk_id'  => $resident->vk_id,
+            'max_id' => $resident->max_id,
+        ], $msgHtml);
+
+        $delivered = [];
+        if (!empty($sendResults['tg']))  $delivered[] = 'Telegram';
+        if (!empty($sendResults['vk']))  $delivered[] = 'VK';
+        if (!empty($sendResults['max'])) $delivered[] = 'MAX';
+
+        if (!empty($delivered)) {
+            return 'Уведомление отправлено в ' . implode(', ', $delivered) . '.';
+        } elseif (empty($resident->tg_id) && empty($resident->vk_id) && empty($resident->max_id)) {
+            return '(боты у жителя не подключены)';
+        } else {
+            return '(не удалось доставить в боты)';
+        }
     }
 }
