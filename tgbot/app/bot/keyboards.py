@@ -44,6 +44,38 @@ def get_exit_keyboard(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t["exit"], callback_data="exit")]])
 
 
+def get_confirm_keyboard(booking_id: int, lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=t.get("confirm_btn", "✅ Я приду"), callback_data=f"confirm_{booking_id}"),
+            InlineKeyboardButton(text=t.get("decline_btn", "❌ Я не приду"), callback_data=f"decline_{booking_id}")
+        ],
+        [
+            InlineKeyboardButton(text=t.get("main_menu_btn", "🏠 Главное меню"), callback_data="to_main_menu")
+        ]
+    ])
+
+
+def get_confirmed_keyboard(booking_id: int, lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=t.get("main_menu_btn", "🏠 Главное меню"), callback_data="to_main_menu"),
+            InlineKeyboardButton(text=t.get("decline_btn", "❌ Я не приду"), callback_data=f"decline_{booking_id}")
+        ]
+    ])
+
+
+def get_declined_keyboard(lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=t.get("main_menu_btn", "🏠 Главное меню"), callback_data="to_main_menu")
+        ]
+    ])
+
+
 def get_slot_freed_keyboard(machine_id: int, start_iso: str, lang: str) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
     btn_text = t.get("quick_book", "⚡ Быстрая запись")

@@ -24,7 +24,10 @@ ENtexts = {
             "otherwise it will be canceled automatically."
         ),
         "confirm_btn": "✅ I will come",
+        "decline_btn": "❌ I won't come",
+        "main_menu_btn": "🏠 Main menu",
         "booking_confirmed": "✅ Booking confirmed! We are waiting for you.",
+        "booking_declined": "❌ You cancelled the booking. The slot is freed for other residents.",
         "booking_autocanceled": "❌ Your booking Date: {date} Time: {time_range} Machine: {machine_type} №{machine_num} was automatically canceled because you did not confirm it in time.",
         "booking_already_confirmed": "This booking has already been confirmed or canceled.",
         "booking_already_canceled": "This booking was automatically canceled (you did not confirm it in time).",

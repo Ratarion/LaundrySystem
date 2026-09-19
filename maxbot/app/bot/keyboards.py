@@ -145,4 +145,22 @@ def get_confirm_keyboard(booking_id: int, lang: str) -> KeyboardBuilder:
     t = _t(lang)
     kb = KeyboardBuilder()
     kb.row(CallbackButton(t.get("confirm_btn", "✅ Я приду"), _payload("confirm", id=booking_id), intent="positive"))
+    kb.row(CallbackButton(t.get("decline_btn", "❌ Я не приду"), _payload("decline", id=booking_id), intent="negative"))
+    kb.row(CallbackButton(t.get("main_menu_btn", "🏠 Главное меню"), _payload("to_main_menu"), intent="default"))
     return kb
+
+
+def get_confirmed_keyboard(booking_id: int, lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t.get("main_menu_btn", "🏠 Главное меню"), _payload("to_main_menu"), intent="default"))
+    kb.row(CallbackButton(t.get("decline_btn", "❌ Я не приду"), _payload("decline", id=booking_id), intent="negative"))
+    return kb
+
+
+def get_declined_keyboard(lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t.get("main_menu_btn", "🏠 Главное меню"), _payload("to_main_menu"), intent="default"))
+    return kb
+

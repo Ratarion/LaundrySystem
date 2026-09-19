@@ -170,8 +170,30 @@ def get_cancel_booking_keyboard(bookings: list, lang: str) -> str:
 
 def get_confirm_keyboard(booking_id: int, lang: str) -> str:
     t = _t(lang)
-    kb = Keyboard(inline=True).add(
-        Callback(t.get("confirm_btn", "✅ Я приду"), {"cmd": "confirm", "id": booking_id}),
-        color=KeyboardButtonColor.POSITIVE,
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t.get("confirm_btn", "✅ Я приду"), {"cmd": "confirm", "id": booking_id}), color=KeyboardButtonColor.POSITIVE)
+        .add(Callback(t.get("decline_btn", "❌ Я не приду"), {"cmd": "decline", "id": booking_id}), color=KeyboardButtonColor.NEGATIVE)
+        .row()
+        .add(Callback(t.get("main_menu_btn", "🏠 Главное меню"), {"cmd": "to_main_menu"}), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
+
+
+def get_confirmed_keyboard(booking_id: int, lang: str) -> str:
+    t = _t(lang)
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t.get("main_menu_btn", "🏠 Главное меню"), {"cmd": "to_main_menu"}), color=KeyboardButtonColor.SECONDARY)
+        .add(Callback(t.get("decline_btn", "❌ Я не приду"), {"cmd": "decline", "id": booking_id}), color=KeyboardButtonColor.NEGATIVE)
+    )
+    return kb.get_json()
+
+
+def get_declined_keyboard(lang: str) -> str:
+    t = _t(lang)
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t.get("main_menu_btn", "🏠 Главное меню"), {"cmd": "to_main_menu"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()

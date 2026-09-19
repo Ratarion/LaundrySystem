@@ -48,7 +48,10 @@ CNtexts = {
             "洗衣将在1小时后开始！请在30分钟内点击下方按钮确认，否则预约将被自动取消。"
         ),
         "confirm_btn": "✅ 我会来",
+        "decline_btn": "❌ 我不会来",
+        "main_menu_btn": "🏠 主菜单",
         "booking_confirmed": "✅ 预约已确认！期待您的到来。",
+        "booking_declined": "❌ 您已取消预约。该时段已释放给其他同学。",
         "booking_autocanceled": "❌ 您的预约 日期: {date} 时间: {time_range} 机器: {machine_type} №{machine_num} 已被自动取消，因为您未及时确认。",
         "booking_already_confirmed": "该预约已确认或已取消。",
         "booking_already_canceled": "该预约已被自动取消（您未及时确认）。",

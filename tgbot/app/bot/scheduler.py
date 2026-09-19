@@ -17,7 +17,7 @@ from app.repositories.laundry_repo import (
 )
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
-from app.bot.keyboards import get_exit_keyboard
+from app.bot.keyboards import get_exit_keyboard, get_confirm_keyboard
 
 from app.db.base import async_session
 from app.bot.utils.timezone import get_kemerovo_now
@@ -77,9 +77,7 @@ async def check_confirmations(bot: Bot):
                 lang = "RU"
             t = ALL_TEXTS[lang]
 
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=t.get("confirm_btn", "Confirm"), callback_data=f"confirm_{db_b.id}")]
-            ])
+            kb = get_confirm_keyboard(db_b.id, lang)
 
             # Формируем текст как раньше, но используем db_b
             try:
