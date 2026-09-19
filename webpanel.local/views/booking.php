@@ -107,6 +107,7 @@
         <!-- Быстрый выбор даты для жителей -->
         <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px;">
             <span style="font-size: 13px; color: #64748b; font-weight: 500;"><i class="fa-regular fa-clock"></i> Быстрый выбор:</span>
+            <button type="button" class="btn btn-sm btn-primary" onclick="setDateRange('today_tomorrow')">Сегодня и завтра</button>
             <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('today')">Сегодня</button>
             <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('tomorrow')">Завтра</button>
             <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('week')">Ближайшая неделя</button>
@@ -295,7 +296,12 @@ function setDateRange(type) {
     }
     
     let fromStr = '', toStr = '';
-    if (type === 'today') {
+    if (type === 'today_tomorrow') {
+        fromStr = fmt(today);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        toStr = fmt(tomorrow);
+    } else if (type === 'today') {
         fromStr = toStr = fmt(today);
     } else if (type === 'tomorrow') {
         const tomorrow = new Date(today);

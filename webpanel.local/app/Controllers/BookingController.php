@@ -195,7 +195,7 @@ class BookingController extends BaseController
                 $date_from = date('Y-m-d');
             }
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_to)) {
-                $date_to = date('Y-m-d', strtotime('+6 days'));
+                $date_to = date('Y-m-d', strtotime('+1 day'));
             }
         }
 
