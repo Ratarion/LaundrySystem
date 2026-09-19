@@ -30,13 +30,16 @@ def get_texts(lang: str) -> dict:
 _t = get_texts
 
 
-def get_lang_keyboard() -> str:
+def get_lang_keyboard(is_settings: bool = False, lang: str = "RU") -> str:
+    t = _t(lang)
     kb = (
         Keyboard(inline=True)
         .add(Callback("RU", {"cmd": "lang", "lang": "RU"}), color=KeyboardButtonColor.PRIMARY)
         .add(Callback("ENG", {"cmd": "lang", "lang": "ENG"}), color=KeyboardButtonColor.PRIMARY)
         .add(Callback("CN", {"cmd": "lang", "lang": "CN"}), color=KeyboardButtonColor.PRIMARY)
     )
+    if is_settings:
+        kb.row().add(Callback(t["back"], {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
     return kb.get_json()
 
 
@@ -65,11 +68,22 @@ def get_section_keyboard(lang: str) -> str:
         .row()
         .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
-        .add(Callback(t.get("notifications_menu", "🔔 Уведомления"), {"cmd": "notifications_menu"}), color=KeyboardButtonColor.SECONDARY)
-        .row()
-        .add(Callback(t["change_language"], {"cmd": "change_language"}), color=KeyboardButtonColor.SECONDARY)
+        .add(Callback(t.get("settings", "⚙️ Настройки"), {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
         .row()
         .add(Callback(t["report_in_admin"], {"cmd": "report"}), color=KeyboardButtonColor.NEGATIVE)
+    )
+    return kb.get_json()
+
+
+def get_settings_keyboard(lang: str) -> str:
+    t = _t(lang)
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t.get("notifications_menu", "🔔 Уведомления"), {"cmd": "notifications_menu"}), color=KeyboardButtonColor.PRIMARY)
+        .row()
+        .add(Callback(t.get("change_language", "🌐 Сменить язык"), {"cmd": "change_language"}), color=KeyboardButtonColor.SECONDARY)
+        .row()
+        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 
@@ -82,7 +96,7 @@ def get_notifications_keyboard(is_enabled: bool, lang: str) -> str:
         Keyboard(inline=True)
         .add(Callback(toggle_text, {"cmd": "toggle_notifications"}), color=toggle_color)
         .row()
-        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
+        .add(Callback(t["back"], {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 

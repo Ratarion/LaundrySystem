@@ -2,7 +2,12 @@ from vkbottle import GroupEventType, OrRule
 from vkbottle.bot import BotLabeler, Message, MessageEvent
 from vkbottle.dispatch.rules.base import PayloadContainsRule, VBMLRule, StateRule
 
-from app.bot.keyboards import get_lang_keyboard, get_section_keyboard, get_notifications_keyboard
+from app.bot.keyboards import (
+    get_lang_keyboard,
+    get_section_keyboard,
+    get_notifications_keyboard,
+    get_settings_keyboard,
+)
 from app.bot.loader import api
 from app.laundry_repo import (
     get_user_by_vk_id,
@@ -151,10 +156,19 @@ async def process_id_card_auth(message: Message):
         await message.answer(t["none_user"])
 
 
+@auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "settings_menu"}))
+async def process_settings_menu(event: MessageEvent):
+    """Меню настроек: уведомления и смена языка"""
+    lang, t = await get_lang_and_texts(event.peer_id)
+    text = t.get("settings_title", "⚙️ Настройки:\n\nВыберите нужный раздел:")
+    await event.edit_message(text, keyboard=get_settings_keyboard(lang))
+
+
 @auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "change_language"}))
 async def process_change_language_btn(event: MessageEvent):
-    """Кнопка 'Сменить язык' из главного меню (не привязана к конкретному состоянию)."""
-    await event.edit_message(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+    """Кнопка 'Сменить язык' из меню настроек (с кнопкой возврата назад)."""
+    lang, t = await get_lang_and_texts(event.peer_id)
+    await event.edit_message(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard(is_settings=True, lang=lang))
 
 
 @auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "notifications_menu"}))

@@ -14,6 +14,19 @@ kb_welcom = InlineKeyboardMarkup(inline_keyboard=[
     ]
 ])
 
+def get_language_keyboard(lang: str = "RU", is_settings: bool = True) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    buttons = [
+        [
+            InlineKeyboardButton(text='RU', callback_data='lang_RU'),
+            InlineKeyboardButton(text="ENG", callback_data='lang_ENG'), 
+            InlineKeyboardButton(text='CN', callback_data='lang_CN')
+        ]
+    ]
+    if is_settings:
+        buttons.append([InlineKeyboardButton(text=t["back"], callback_data="settings_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 # Клавиатура для выбора типа машины: стирка или сушка.
 def get_machine_type_keyboard(lang: str) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
@@ -34,9 +47,18 @@ def get_section_keyboard(lang: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text=t["show_records"], callback_data="show_records")],
             [InlineKeyboardButton(text=t["cancel_record"], callback_data="remove_records")],
             [InlineKeyboardButton(text=t.get("web_panel", "🌐 Перейти на сайт"), url="http://webpanel.beget.tech")],
-            [InlineKeyboardButton(text=t.get("notifications_menu", "🔔 Уведомления"), callback_data="notifications_menu")],
-            [InlineKeyboardButton(text=t["change_language"], callback_data="change_language")],
+            [InlineKeyboardButton(text=t.get("settings", "⚙️ Настройки"), callback_data="settings_menu")],
             [InlineKeyboardButton(text=t["report_in_admin"], callback_data="report")],
+        ]
+    )
+
+def get_settings_keyboard(lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t.get("notifications_menu", "🔔 Уведомления"), callback_data="notifications_menu")],
+            [InlineKeyboardButton(text=t.get("change_language", "🌐 Сменить язык"), callback_data="change_language")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
         ]
     )
 
@@ -46,7 +68,7 @@ def get_notifications_keyboard(is_enabled: bool, lang: str) -> InlineKeyboardMar
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=toggle_text, callback_data="toggle_notifications")],
-            [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
+            [InlineKeyboardButton(text=t["back"], callback_data="settings_menu")]
         ]
     )
 

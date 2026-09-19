@@ -12,6 +12,8 @@ CNtexts = {
         "web_panel": "🌐 访问网页版",
         "exit": "退出",
         "back": "返回",
+        "settings": "⚙️ 设置",
+        "settings_title": "⚙️ <b>设置</b>\n\n请选择功能：",
         "change_language": "🌐 更改语言",
         "notifications_menu": "🔔 通知设置",
         "notifications_settings_title": (

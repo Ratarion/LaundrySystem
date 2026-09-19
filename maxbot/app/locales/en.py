@@ -13,6 +13,8 @@ ENtexts = {
         "web_panel": "🌐 Open Website",
         "exit": "Exit",
         "back": "Back",
+        "settings": "⚙️ Settings",
+        "settings_title": "⚙️ Settings\n\nSelect a section:",
         "change_language": "🌐 Change language",
         "notifications_menu": "🔔 Notifications",
         "notifications_settings_title": (

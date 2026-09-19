@@ -21,13 +21,16 @@ def _payload(cmd: str, **kwargs) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-def get_lang_keyboard() -> KeyboardBuilder:
+def get_lang_keyboard(is_settings: bool = False, lang: str = "RU") -> KeyboardBuilder:
+    t = _t(lang)
     kb = KeyboardBuilder()
     kb.row(
         CallbackButton("🇷🇺 Русский", _payload("lang", lang="RU"), intent="positive"),
         CallbackButton("🇬🇧 English", _payload("lang", lang="ENG"), intent="default"),
         CallbackButton("🇨🇳 中文", _payload("lang", lang="CN"), intent="default")
     )
+    if is_settings:
+        kb.row(CallbackButton(t["back"], _payload("settings_menu"), intent="default"))
     return kb
 
 
@@ -38,9 +41,17 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     kb.row(CallbackButton(t["show_records"], _payload("show_records"), intent="default"))
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
     kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
-    kb.row(CallbackButton(t.get("notifications_menu", "🔔 Уведомления"), _payload("notifications_menu"), intent="default"))
-    kb.row(CallbackButton(t["change_language"], _payload("change_language"), intent="default"))
+    kb.row(CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"))
     kb.row(CallbackButton(t["report_in_admin"], _payload("report"), intent="negative"))
+    return kb
+
+
+def get_settings_keyboard(lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t.get("notifications_menu", "🔔 Уведомления"), _payload("notifications_menu"), intent="default"))
+    kb.row(CallbackButton(t.get("change_language", "🌐 Сменить язык"), _payload("change_language"), intent="default"))
+    kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
 
 
@@ -50,7 +61,7 @@ def get_notifications_keyboard(is_enabled: bool, lang: str) -> KeyboardBuilder:
     toggle_intent = "negative" if is_enabled else "positive"
     kb = KeyboardBuilder()
     kb.row(CallbackButton(toggle_text, _payload("toggle_notifications"), intent=toggle_intent))
-    kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
+    kb.row(CallbackButton(t["back"], _payload("settings_menu"), intent="default"))
     return kb
 
 

@@ -12,6 +12,8 @@ RUtexts = {
         "report_too_long": "Сообщение слишком длинное. Пожалуйста, сократите и отправьте заново.",
         "exit": "Выйти",
         "back": "Назад",
+        "settings": "⚙️ Настройки",
+        "settings_title": "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:",
         "change_language": "🌐 Сменить язык",
         "notifications_menu": "🔔 Уведомления",
         "notifications_settings_title": (

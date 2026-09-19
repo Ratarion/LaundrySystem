@@ -3,7 +3,13 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
-from app.bot.keyboards import kb_welcom, get_section_keyboard, get_notifications_keyboard
+from app.bot.keyboards import (
+    kb_welcom,
+    get_section_keyboard,
+    get_notifications_keyboard,
+    get_settings_keyboard,
+    get_language_keyboard,
+)
 from app.repositories.laundry_repo import (
     get_user_by_tg_id,
     find_resident_by_fio,
@@ -162,34 +168,66 @@ async def process_id_card_auth(message: Message, state: FSMContext):
         await message.answer(t["none_user"])
 
 
+@auth_router.callback_query(F.data == "settings_menu")
+async def process_settings_menu(callback: CallbackQuery, state: FSMContext):
+    """
+    Меню настроек: уведомления и смена языка
+    """
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
+    text = t.get("settings_title", "⚙️ <b>Настройки</b>\n\nВыберите нужный раздел:")
+    try:
+        await callback.message.edit_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=get_settings_keyboard(lang)
+        )
+    except Exception:
+        await callback.message.answer(
+            text,
+            parse_mode="HTML",
+            reply_markup=get_settings_keyboard(lang)
+        )
+    await callback.answer()
+
+
 @auth_router.callback_query(F.data == "change_language")
 async def process_change_language_btn(callback: CallbackQuery, state: FSMContext):
     """
-    Обработчик кнопки 'Сменить язык' из главного меню.
-    Показывает клавиатуру выбора языка.
+    Обработчик кнопки 'Сменить язык' из меню настроек.
+    Показывает клавиатуру выбора языка с кнопкой возврата назад в настройки.
     """
-    # Берем тексты для текущего языка, чтобы заголовок был понятен
-    lang, t = await get_lang_and_texts(state)
-    
-    # Показываем сообщение с выбором языка (текст welcome_lang_choice у вас мульти-язычный сразу)
-    await callback.message.edit_text(
-        ALL_TEXTS["RU"]["welcome_lang_choice"], 
-        reply_markup=kb_welcom
-    )
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
+    try:
+        await callback.message.edit_text(
+            ALL_TEXTS["RU"]["welcome_lang_choice"], 
+            reply_markup=get_language_keyboard(lang, is_settings=True)
+        )
+    except Exception:
+        await callback.message.answer(
+            ALL_TEXTS["RU"]["welcome_lang_choice"], 
+            reply_markup=get_language_keyboard(lang, is_settings=True)
+        )
     await callback.answer()
 
 
 @auth_router.callback_query(F.data == "notifications_menu")
 async def process_notifications_menu(callback: CallbackQuery, state: FSMContext):
-    lang, t = await get_lang_and_texts(state)
+    lang, t = await get_lang_and_texts(state, tg_id=callback.from_user.id)
     is_enabled = await get_user_notify_status_by_tg(callback.from_user.id)
     status_str = t["status_enabled"] if is_enabled else t["status_disabled"]
     text = t["notifications_settings_title"].format(status=status_str)
-    await callback.message.edit_text(
-        text=text,
-        parse_mode="HTML",
-        reply_markup=get_notifications_keyboard(is_enabled, lang)
-    )
+    try:
+        await callback.message.edit_text(
+            text=text,
+            parse_mode="HTML",
+            reply_markup=get_notifications_keyboard(is_enabled, lang)
+        )
+    except Exception:
+        await callback.message.answer(
+            text=text,
+            parse_mode="HTML",
+            reply_markup=get_notifications_keyboard(is_enabled, lang)
+        )
     await callback.answer()
 
 

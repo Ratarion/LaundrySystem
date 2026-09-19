@@ -5,7 +5,12 @@ from typing import Optional
 import aiomax
 from aiomax import Router, Message, Callback, CommandContext, BotStartPayload, fsm
 
-from app.bot.keyboards import get_lang_keyboard, get_section_keyboard, get_notifications_keyboard
+from app.bot.keyboards import (
+    get_lang_keyboard,
+    get_section_keyboard,
+    get_notifications_keyboard,
+    get_settings_keyboard,
+)
 from app.laundry_repo import (
     get_user_by_max_id,
     find_resident_by_fio,
@@ -159,9 +164,19 @@ async def process_id_card_auth(message: Message, cursor: fsm.FSMCursor):
         await message.reply(t["none_user"])
 
 
+@auth_router.on_button_callback(lambda cb: _is_cmd(cb, "settings_menu"))
+async def process_settings_menu(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    text = t.get("settings_title", "⚙️ Настройки:\n\nВыберите нужный раздел:")
+    await cb.answer(text=text, keyboard=get_settings_keyboard(lang))
+
+
 @auth_router.on_button_callback(lambda cb: _is_cmd(cb, "change_language"))
 async def process_change_language_btn(cb: Callback, cursor: fsm.FSMCursor):
-    await cb.answer(text=ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    await cb.answer(text=ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard(is_settings=True, lang=lang))
 
 
 @auth_router.on_button_callback(lambda cb: _is_cmd(cb, "notifications_menu"))
