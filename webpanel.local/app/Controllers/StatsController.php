@@ -511,6 +511,7 @@ class StatsController extends BaseController
         $topMachines     = [];
         $machineStats    = [];
         $roomStats       = [];
+        $dormitoryStats  = [];
         $typeStats       = ['washing' => 0, 'drying' => 0];
         $statusStats     = [
             'Подтверждено'            => 0,
@@ -594,7 +595,35 @@ class StatsController extends BaseController
             } else {
                 $roomStats[$roomCompositeKey]['active']++;
             }
+
+            // По общежитиям
+            $dId = !empty($b['dormitory_id']) ? (int)$b['dormitory_id'] : 1;
+            $dName = !empty($b['dormitory_name']) ? $b['dormitory_name'] : ('Общежитие №' . $dId);
+            if (!isset($dormitoryStats[$dId])) {
+                $dormitoryStats[$dId] = [
+                    'id'        => $dId,
+                    'name'      => $dName,
+                    'total'     => 0,
+                    'active'    => 0,
+                    'cancelled' => 0,
+                    'rooms'     => []
+                ];
+            }
+            $dormitoryStats[$dId]['total']++;
+            if (in_array($status, ['cancelled', 'Отменено', 'Отмена'])) {
+                $dormitoryStats[$dId]['cancelled']++;
+            } else {
+                $dormitoryStats[$dId]['active']++;
+            }
+            if (!empty($b['inidroom'])) {
+                $dormitoryStats[$dId]['rooms'][$b['inidroom']] = true;
+            }
         }
+
+        // Сортировка общежитий по общему числу бронирований
+        uasort($dormitoryStats, function($a, $b) {
+            return $b['total'] <=> $a['total'];
+        });
 
         // Сортировка машин
         arsort($topMachines);
@@ -635,6 +664,7 @@ class StatsController extends BaseController
             'topMachines'       => array_slice($topMachines, 0, 5, true),
             'machineStats'      => $machineStats,
             'roomStats'         => $roomStats,
+            'dormitoryStats'    => $dormitoryStats,
             'typeStats'         => $typeStats,
             'statusStats'       => $statusStats,
             'dailyLabels'       => array_keys($dailyData),
