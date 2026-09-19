@@ -164,27 +164,69 @@ class Resident
     }
 
     /**
-     * Получить список всех жителей (с фильтрацией по общежитию)
+     * Получить список всех жителей (с расширенной фильтрацией)
      */
-    public static function getAll(PDO $db, $dormitoryId = null)
+    public static function getAll(PDO $db, $dormitoryId = null, array $filters = [])
     {
         try {
             $sql = "
                 SELECT r.*, d.name AS dormitory_name 
                 FROM residents r
                 LEFT JOIN dormitories d ON r.dormitory_id = d.id
+                WHERE 1=1
             ";
             $params = [];
 
             if (!empty($dormitoryId)) {
-                $sql .= " WHERE r.dormitory_id = ?";
+                $sql .= " AND r.dormitory_id = ?";
                 $params[] = (int)$dormitoryId;
+            }
+
+            if (!empty($filters['fio'])) {
+                $sql .= " AND (CONCAT_WS(' ', r.last_name, r.first_name, r.patronymic) ILIKE ? OR r.last_name ILIKE ? OR r.first_name ILIKE ?)";
+                $search = '%' . $filters['fio'] . '%';
+                $params[] = $search;
+                $params[] = $search;
+                $params[] = $search;
+            }
+
+            if (!empty($filters['room'])) {
+                $sql .= " AND CAST(r.inidroom AS TEXT) ILIKE ?";
+                $params[] = '%' . $filters['room'] . '%';
+            }
+
+            if (!empty($filters['idcard'])) {
+                $sql .= " AND CAST(r.idcards AS TEXT) ILIKE ?";
+                $params[] = '%' . $filters['idcard'] . '%';
+            }
+
+            if (!empty($filters['bot_status'])) {
+                if ($filters['bot_status'] === 'connected') {
+                    $sql .= " AND (r.tg_id IS NOT NULL OR r.vk_id IS NOT NULL OR r.max_id IS NOT NULL)";
+                } elseif ($filters['bot_status'] === 'not_connected') {
+                    $sql .= " AND (r.tg_id IS NULL AND r.vk_id IS NULL AND r.max_id IS NULL)";
+                } elseif ($filters['bot_status'] === 'tg') {
+                    $sql .= " AND r.tg_id IS NOT NULL";
+                } elseif ($filters['bot_status'] === 'vk') {
+                    $sql .= " AND r.vk_id IS NOT NULL";
+                } elseif ($filters['bot_status'] === 'max') {
+                    $sql .= " AND r.max_id IS NOT NULL";
+                }
+            }
+
+            if (isset($filters['notify_status']) && $filters['notify_status'] !== '') {
+                if ($filters['notify_status'] === '1') {
+                    $sql .= " AND r.notify_unconfirmed IS TRUE";
+                } elseif ($filters['notify_status'] === '0') {
+                    $sql .= " AND r.notify_unconfirmed IS FALSE";
+                }
             }
 
             $sql .= " ORDER BY d.number ASC, r.last_name, r.first_name";
 
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
+
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $residents = [];

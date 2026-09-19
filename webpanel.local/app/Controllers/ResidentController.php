@@ -33,7 +33,7 @@ class ResidentController extends BaseController
                 $resident->patronymic   = trim($_POST['patronymic'] ?? '');
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
-                $resident->notify_unconfirmed = !empty($_POST['notify_unconfirmed']);
+                $resident->notify_unconfirmed = (isset($_POST['notify_unconfirmed']) && (string)$_POST['notify_unconfirmed'] === '1');
                 if ($resident->save()) {
                     $this->log->info('Добавлен новый житель', ['room' => $resident->inidroom, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Житель успешно добавлен!';
@@ -56,7 +56,7 @@ class ResidentController extends BaseController
                 $resident->patronymic   = trim($_POST['patronymic'] ?? '');
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
-                $resident->notify_unconfirmed = !empty($_POST['notify_unconfirmed']);
+                $resident->notify_unconfirmed = (isset($_POST['notify_unconfirmed']) && (string)$_POST['notify_unconfirmed'] === '1');
                 if ($resident->save()) {
                     $this->log->info('Отредактирован житель', ['id' => $resident->id, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Данные жителя обновлены!';
@@ -104,19 +104,36 @@ class ResidentController extends BaseController
         }
 
         // Если пользователь привязан к корпусу — фиксируем фильтр!
-        $dormitory_id = $sessionDormId !== null ? $sessionDormId : ($_GET['dormitory_id'] ?? '');
-        $residents    = Resident::getAll($this->pdo, $dormitory_id);
+        $dormitory_id  = $sessionDormId !== null ? $sessionDormId : ($_GET['dormitory_id'] ?? '');
+        $fio           = trim($_GET['fio'] ?? '');
+        $room          = trim($_GET['room'] ?? '');
+        $idcard        = trim($_GET['idcard'] ?? '');
+        $bot_status    = trim($_GET['bot_status'] ?? '');
+        $notify_status = isset($_GET['notify_status']) ? trim($_GET['notify_status']) : '';
+
+        $residents    = Resident::getAll($this->pdo, $dormitory_id, [
+            'fio'           => $fio,
+            'room'          => $room,
+            'idcard'        => $idcard,
+            'bot_status'    => $bot_status,
+            'notify_status' => $notify_status,
+        ]);
         $dormitories  = Dormitory::getAll($this->pdo);
 
         $this->render('residents', [
             'residents'     => $residents,
             'dormitories'   => $dormitories,
             'dormitory_id'  => $dormitory_id,
+            'fio'           => $fio,
+            'room'          => $room,
+            'idcard'        => $idcard,
+            'bot_status'    => $bot_status,
+            'notify_status' => $notify_status,
             'sessionDormId' => $sessionDormId,
             'editResident'  => $editResident,
             'roleName'      => $roleName,
             'success'       => $_GET['success'] ?? null,
-            'error'         => $_GET['error'] ?? null
+            'error'         => $errorMessage ?: ($_GET['error'] ?? null)
         ]);
     }
 }

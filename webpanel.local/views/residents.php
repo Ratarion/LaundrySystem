@@ -24,28 +24,75 @@
         </div>
     </div>
 
-    <!-- Фильтр по общежитию -->
-    <?php if (empty($sessionDormId)): ?>
+    <!-- Форма фильтров жителей -->
     <div class="glass-card" style="margin-bottom: 20px;">
-        <form method="GET" class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Фильтр по общежитию</label>
-                <select name="dormitory_id" class="form-control" onchange="this.form.submit()">
-                    <option value="">Все общежития</option>
-                    <?php foreach ($dormitories as $d): ?>
-                        <option value="<?= $d->id ?>" <?= ($dormitory_id == $d->id) ? 'selected' : '' ?>>
-                            <?= e($d->name) ?>
-                        </option>
-                    <?php endforeach; ?>
+        <form method="GET" action="/residents" class="form-grid" id="residentsFilterForm">
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-building"></i> Общежитие</label>
+                <?php if (!empty($sessionDormId)): ?>
+                    <input type="hidden" name="dormitory_id" value="<?= $sessionDormId ?>">
+                    <div class="form-control" style="background: rgba(255,255,255,0.05); color: #38bdf8; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-lock" style="font-size: 12px; opacity: 0.7;"></i>
+                        <?= e($_SESSION['dormitory_name'] ?? ('Общежитие №' . $sessionDormId)) ?>
+                    </div>
+                <?php else: ?>
+                    <select name="dormitory_id" class="form-control">
+                        <option value="">Все корпуса</option>
+                        <?php foreach ($dormitories as $d): ?>
+                            <option value="<?= $d->id ?>" <?= ($dormitory_id == $d->id) ? 'selected' : '' ?>>
+                                <?= e($d->name) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-user"></i> ФИО жителя</label>
+                <input type="text" name="fio" value="<?= e($fio ?? '') ?>" class="form-control" placeholder="Поиск по ФИО...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-door-closed"></i> Комната</label>
+                <input type="text" name="room" value="<?= e($room ?? '') ?>" class="form-control" placeholder="101">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-id-card"></i> Номер зачётки / ID</label>
+                <input type="text" name="idcard" value="<?= e($idcard ?? '') ?>" class="form-control" placeholder="Номер зачётки...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-robot"></i> Подключение ботов</label>
+                <select name="bot_status" class="form-control">
+                    <option value="">Все статусы</option>
+                    <option value="connected" <?= ($bot_status ?? '') === 'connected' ? 'selected' : '' ?>>🤖 Подключён бот</option>
+                    <option value="not_connected" <?= ($bot_status ?? '') === 'not_connected' ? 'selected' : '' ?>>❌ Не подключён</option>
+                    <option value="tg" <?= ($bot_status ?? '') === 'tg' ? 'selected' : '' ?>>Telegram (TG)</option>
+                    <option value="vk" <?= ($bot_status ?? '') === 'vk' ? 'selected' : '' ?>>ВКонтакте (VK)</option>
+                    <option value="max" <?= ($bot_status ?? '') === 'max' ? 'selected' : '' ?>>MAX Bot</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-secondary">Применить</button>
-            <?php if (!empty($dormitory_id)): ?>
-                <a href="/residents" class="btn btn-secondary">Сбросить</a>
-            <?php endif; ?>
+
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-bell"></i> Свободные слоты</label>
+                <select name="notify_status" class="form-control">
+                    <option value="">Все</option>
+                    <option value="1" <?= ($notify_status ?? '') === '1' ? 'selected' : '' ?>>🔔 Включены</option>
+                    <option value="0" <?= ($notify_status ?? '') === '0' ? 'selected' : '' ?>>🔕 Отключены</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 8px; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="fa-solid fa-filter"></i> Применить
+                </button>
+                <a href="/residents" class="btn btn-secondary" title="Сбросить фильтры" style="padding: 10px 14px;">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
         </form>
     </div>
-    <?php endif; ?>
 
     <!-- Форма добавления / редактирования -->
     <div class="glass-card">
@@ -102,11 +149,12 @@
                 <input type="number" name="idcards" value="<?= e($editResident['idcards'] ?? '') ?>" required class="form-control" placeholder="123456">
             </div>
 
-            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                    <input type="checkbox" name="notify_unconfirmed" value="1" <?= (!isset($editResident) || !empty($editResident['notify_unconfirmed'])) ? 'checked' : '' ?> style="width: 18px; height: 18px; cursor: pointer;">
-                    <span>🔔 Уведомления о свободных слотах (рассылка при отмене стирки)</span>
-                </label>
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-bell"></i> Уведомления о свободных слотах</label>
+                <select name="notify_unconfirmed" class="form-control">
+                    <option value="1" <?= (!isset($editResident) || !empty($editResident['notify_unconfirmed'])) ? 'selected' : '' ?>>🔔 Включены (рассылка при отмене)</option>
+                    <option value="0" <?= (isset($editResident) && empty($editResident['notify_unconfirmed'])) ? 'selected' : '' ?>>🔕 Отключены</option>
+                </select>
             </div>
 
             <div style="display: flex; gap: 10px; align-items: flex-end;">
@@ -139,7 +187,7 @@
                 </thead>
                 <tbody>
                     <?php foreach ($residents as $r): 
-                        $fio = trim($r->last_name . ' ' . $r->first_name . ' ' . ($r->patronymic ?? ''));
+                        $residentFio = trim($r->last_name . ' ' . $r->first_name . ' ' . ($r->patronymic ?? ''));
                     ?>
                     <tr>
                         <td><?= $r->id ?></td>
@@ -148,7 +196,7 @@
                                 <i class="fa-solid fa-building"></i> <?= e($r->dormitory_name ?? ('Общежитие №' . ($r->dormitory_id ?? 1))) ?>
                             </span>
                         </td>
-                        <td style="font-weight: 600;"><?= e($fio) ?></td>
+                        <td style="font-weight: 600;"><?= e($residentFio) ?></td>
                         <td style="text-align: center; font-weight: 600;"><?= e($r->inidroom) ?></td>
                         <td style="text-align: center; font-family: monospace; font-size: 14px;"><?= e($r->idcards ?? '—') ?></td>
                         <td style="text-align: center;">
@@ -185,7 +233,7 @@
                         <td style="text-align: center;">
                             <a href="/residents?edit=<?= $r->id ?>" class="btn btn-primary" style="padding:6px 14px; font-size:13px; margin-right:6px;">Редактировать</a>
                             
-                            <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить жителя <?= e($fio) ?>?')">
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить жителя <?= e($residentFio) ?>?')">
                                 <input type="hidden" name="delete_id" value="<?= $r->id ?>">
                                 <button type="submit" class="btn btn-danger" style="padding:6px 14px; font-size:13px;">Удалить</button>
                             </form>
