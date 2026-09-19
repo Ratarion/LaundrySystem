@@ -15,6 +15,7 @@ RUtexts = {
         "back": "Назад",
         "settings": "⚙️ Настройки",
         "settings_title": "⚙️ Настройки\n\nВыберите нужный раздел:",
+        "user_banned_alert": "❌ Ваш аккаунт заблокирован. Запись на стирку недоступна. Обратитесь к администратору.",
         "change_language": "🌐 Сменить язык",
         "notifications_menu": "🔔 Уведомления",
         "notifications_settings_title": (

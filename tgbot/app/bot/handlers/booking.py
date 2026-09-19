@@ -54,6 +54,10 @@ async def process_record_start(callback: CallbackQuery, state: FSMContext):
         await callback.answer(t["none_user"], show_alert=True)
         return
     
+    if getattr(user, "is_banned", False):
+        await callback.answer(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."), show_alert=True)
+        return
+    
     dormitory_id = getattr(user, "dormitory_id", 1) or 1
     await state.update_data(user_id=user.id, dormitory_id=dormitory_id)
 
@@ -409,6 +413,10 @@ async def process_quick_booking(callback: CallbackQuery, state: FSMContext):
     user = await get_user_by_tg_id(callback.from_user.id)
     if not user:
         await callback.answer(t.get("none_user", "Пользователь не найден"), show_alert=True)
+        return
+
+    if getattr(user, "is_banned", False):
+        await callback.answer(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."), show_alert=True)
         return
 
     if start_time <= get_kemerovo_now():

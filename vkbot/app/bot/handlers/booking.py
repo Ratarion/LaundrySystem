@@ -60,6 +60,10 @@ async def process_record_start(event: MessageEvent):
         await event.show_snackbar(t["none_user"])
         return
 
+    if getattr(user, "is_banned", False):
+        await event.show_snackbar(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
+        return
+
     dormitory_id = getattr(user, "dormitory_id", 1) or 1
     await update_state_data(peer_id, user_id=user.id, dormitory_id=dormitory_id)
 
@@ -379,6 +383,10 @@ async def process_quick_book(event: MessageEvent):
     user = await get_user_by_vk_id(event.user_id)
     if not user:
         await event.show_snackbar(t.get("none_user", "Пользователь не найден"))
+        return
+
+    if getattr(user, "is_banned", False):
+        await event.show_snackbar(t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
         return
 
     if start_time <= get_kemerovo_now():

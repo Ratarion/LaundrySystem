@@ -34,6 +34,7 @@ class ResidentController extends BaseController
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
                 $resident->notify_unconfirmed = (isset($_POST['notify_unconfirmed']) && (string)$_POST['notify_unconfirmed'] === '1');
+                $resident->is_banned = (isset($_POST['is_banned']) && (string)$_POST['is_banned'] === '1');
                 if ($resident->save()) {
                     $this->log->info('Добавлен новый житель', ['room' => $resident->inidroom, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Житель успешно добавлен!';
@@ -57,11 +58,29 @@ class ResidentController extends BaseController
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
                 $resident->notify_unconfirmed = (isset($_POST['notify_unconfirmed']) && (string)$_POST['notify_unconfirmed'] === '1');
+                $resident->is_banned = (isset($_POST['is_banned']) && (string)$_POST['is_banned'] === '1');
                 if ($resident->save()) {
                     $this->log->info('Отредактирован житель', ['id' => $resident->id, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Данные жителя обновлены!';
                 } else {
                     $errorMessage = $resident->getLastError() ?: 'Ошибка при сохранении жителя.';
+                }
+            }
+
+            if (isset($_POST['toggle_ban_id'])) {
+                $resident = new Resident($this->pdo);
+                if ($resident->load((int)$_POST['toggle_ban_id'])) {
+                    if ($sessionDormId !== null && (int)$resident->dormitory_id !== $sessionDormId) {
+                        $this->redirect("/residents?error=" . urlencode('Вы можете изменять статус только жителей своего общежития!'));
+                    }
+                    $resident->is_banned = !$resident->is_banned;
+                    if ($resident->save()) {
+                        $action = $resident->is_banned ? 'заблокирован' : 'разблокирован';
+                        $this->log->info("Житель {$action}", ['id' => $resident->id, 'role' => $roleName]);
+                        $successMessage = "Житель успешно {$action}!";
+                    } else {
+                        $errorMessage = 'Ошибка при изменении статуса жителя.';
+                    }
                 }
             }
 
@@ -98,7 +117,8 @@ class ResidentController extends BaseController
                     'patronymic'   => $editResidentObj->patronymic,
                     'inidroom'           => $editResidentObj->inidroom,
                     'idcards'            => $editResidentObj->idcards,
-                    'notify_unconfirmed' => $editResidentObj->notify_unconfirmed
+                    'notify_unconfirmed' => $editResidentObj->notify_unconfirmed,
+                    'is_banned'          => $editResidentObj->is_banned
                 ];
             }
         }
@@ -110,6 +130,7 @@ class ResidentController extends BaseController
         $idcard        = trim($_GET['idcard'] ?? '');
         $bot_status    = trim($_GET['bot_status'] ?? '');
         $notify_status = isset($_GET['notify_status']) ? trim($_GET['notify_status']) : '';
+        $ban_status    = trim($_GET['ban_status'] ?? '');
 
         $residents    = Resident::getAll($this->pdo, $dormitory_id, [
             'fio'           => $fio,
@@ -117,6 +138,7 @@ class ResidentController extends BaseController
             'idcard'        => $idcard,
             'bot_status'    => $bot_status,
             'notify_status' => $notify_status,
+            'ban_status'    => $ban_status,
         ]);
         $dormitories  = Dormitory::getAll($this->pdo);
 
@@ -129,6 +151,7 @@ class ResidentController extends BaseController
             'idcard'        => $idcard,
             'bot_status'    => $bot_status,
             'notify_status' => $notify_status,
+            'ban_status'    => $ban_status,
             'sessionDormId' => $sessionDormId,
             'editResident'  => $editResident,
             'roleName'      => $roleName,

@@ -103,6 +103,10 @@ async def process_record_start(cb: Callback, cursor: fsm.FSMCursor):
         await cb.answer(notification=t["none_user"])
         return
 
+    if getattr(user, "is_banned", False):
+        await cb.answer(notification=t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
+        return
+
     dormitory_id = getattr(user, "dormitory_id", 1) or 1
     data = cursor.get_data() or {}
     data["resident_id"] = user.id
@@ -529,6 +533,10 @@ async def process_quick_book(cb: Callback, cursor: fsm.FSMCursor):
     user = await get_user_by_max_id(user_id)
     if not user:
         await cb.answer(notification=t.get("none_user", "Пользователь не найден"))
+        return
+
+    if getattr(user, "is_banned", False):
+        await cb.answer(notification=t.get("user_banned_alert", "❌ Ваш аккаунт заблокирован. Запись недоступна."))
         return
 
     if start_time <= get_kemerovo_now():

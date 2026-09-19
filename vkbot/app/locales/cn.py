@@ -15,6 +15,7 @@ CNtexts = {
         "back": "返回",
         "settings": "⚙️ 设置",
         "settings_title": "⚙️ 设置\n\n请选择功能：",
+        "user_banned_alert": "❌ 您的账号已被封禁，无法预约洗衣。如有疑问请联系管理员。",
         "change_language": "🌐 更改语言",
         "notifications_menu": "🔔 通知设置",
         "notifications_settings_title": (

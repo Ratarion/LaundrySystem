@@ -18,4 +18,5 @@ class Resident(Base):
     patronymic: Mapped[str] = mapped_column(String, nullable=True)
     language: Mapped[str] = mapped_column(String, default='RU', nullable=True)
     notify_unconfirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

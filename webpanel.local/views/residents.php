@@ -83,6 +83,15 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-user-shield"></i> Статус доступа</label>
+                <select name="ban_status" class="form-control">
+                    <option value="">Все статусы</option>
+                    <option value="active" <?= ($ban_status ?? '') === 'active' ? 'selected' : '' ?>>✅ Только активные</option>
+                    <option value="banned" <?= ($ban_status ?? '') === 'banned' ? 'selected' : '' ?>>🚫 Заблокированные</option>
+                </select>
+            </div>
+
             <div style="display: flex; gap: 8px; align-items: flex-end;">
                 <button type="submit" class="btn btn-primary" style="flex: 1;">
                     <i class="fa-solid fa-filter"></i> Применить
@@ -157,6 +166,14 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label class="form-label"><i class="fa-solid fa-user-shield"></i> Статус доступа к записи</label>
+                <select name="is_banned" class="form-control">
+                    <option value="0" <?= (empty($editResident['is_banned'])) ? 'selected' : '' ?>>✅ Активен (запись разрешена)</option>
+                    <option value="1" <?= (!empty($editResident['is_banned'])) ? 'selected' : '' ?>>🚫 Заблокирован (запись запрещена)</option>
+                </select>
+            </div>
+
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <button type="submit" class="btn btn-primary">
                     <?= $editResident ? 'Сохранить изменения' : 'Добавить жителя' ?>
@@ -182,7 +199,8 @@
                         <th style="text-align: center; width: 130px;">Зачётка/Карта</th>
                         <th style="text-align: center; width: 140px;">Боты</th>
                         <th style="text-align: center; width: 140px;">Свободные слоты</th>
-                        <th style="text-align: center; width: 220px;">Действия</th>
+                        <th style="text-align: center; width: 130px;">Доступ</th>
+                        <th style="text-align: center; width: 270px;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -231,11 +249,31 @@
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
-                            <a href="/residents?edit=<?= $r->id ?>" class="btn btn-primary" style="padding:6px 14px; font-size:13px; margin-right:6px;">Редактировать</a>
+                            <?php if (!empty($r->is_banned)): ?>
+                                <span class="badge" style="background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 600;" title="Заблокирован (запись запрещена)">
+                                    <i class="fa-solid fa-ban"></i> Заблокирован
+                                </span>
+                            <?php else: ?>
+                                <span class="badge" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 600;" title="Активен (запись разрешена)">
+                                    <i class="fa-solid fa-check"></i> Активен
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <a href="/residents?edit=<?= $r->id ?>" class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin-right:4px;">Редактировать</a>
                             
+                            <form method="POST" style="display:inline; margin-right:4px;" onsubmit="return confirm('<?= !empty($r->is_banned) ? ('Разблокировать жителя ' . e($residentFio) . '?') : ('Заблокировать жителя ' . e($residentFio) . '? Он не сможет записываться на стирку.') ?>')">
+                                <input type="hidden" name="toggle_ban_id" value="<?= $r->id ?>">
+                                <?php if (!empty($r->is_banned)): ?>
+                                    <button type="submit" class="btn btn-success" style="padding:6px 12px; font-size:13px;" title="Разблокировать доступ"><i class="fa-solid fa-unlock"></i> Разбан</button>
+                                <?php else: ?>
+                                    <button type="submit" class="btn" style="padding:6px 12px; font-size:13px; background-color: #f59e0b; border-color: #d97706; color: #fff;" title="Заблокировать запись"><i class="fa-solid fa-ban"></i> Бан</button>
+                                <?php endif; ?>
+                            </form>
+
                             <form method="POST" style="display:inline;" onsubmit="return confirm('Удалить жителя <?= e($residentFio) ?>?')">
                                 <input type="hidden" name="delete_id" value="<?= $r->id ?>">
-                                <button type="submit" class="btn btn-danger" style="padding:6px 14px; font-size:13px;">Удалить</button>
+                                <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:13px;">Удалить</button>
                             </form>
                         </td>
                     </tr>

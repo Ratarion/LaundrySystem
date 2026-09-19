@@ -23,6 +23,7 @@ class Resident
     public $max_id;
     public $language;
     public $notify_unconfirmed = true;
+    public $is_banned = false;
 
     // Дополнительные поля из JOIN
     public $dormitory_name;
@@ -62,6 +63,7 @@ class Resident
                 $this->max_id              = $data['max_id'] ?? null;
                 $this->language            = $data['language'] ?? 'RU';
                 $this->notify_unconfirmed  = isset($data['notify_unconfirmed']) ? (bool)$data['notify_unconfirmed'] : true;
+                $this->is_banned           = isset($data['is_banned']) ? (bool)$data['is_banned'] : false;
                 $this->dormitory_name      = $data['dormitory_name'] ?? ('Общежитие №' . $this->dormitory_id);
                 return true;
             }
@@ -103,7 +105,8 @@ class Resident
                         patronymic = ?, 
                         inidroom = ?,
                         idcards = ?,
-                        notify_unconfirmed = ?
+                        notify_unconfirmed = ?,
+                        is_banned = ?
                     WHERE id = ?
                 ");
                 return $stmt->execute([
@@ -114,13 +117,14 @@ class Resident
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
                     !empty($this->idcards) ? (int)$this->idcards : null,
                     $this->notify_unconfirmed ? 1 : 0,
+                    $this->is_banned ? 1 : 0,
                     $this->id
                 ]);
             } else {
                 // INSERT
                 $stmt = $this->db->prepare("
-                    INSERT INTO residents (dormitory_id, last_name, first_name, patronymic, inidroom, idcards, language, notify_unconfirmed)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO residents (dormitory_id, last_name, first_name, patronymic, inidroom, idcards, language, notify_unconfirmed, is_banned)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $result = $stmt->execute([
                     $dormId,
@@ -130,7 +134,8 @@ class Resident
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
                     !empty($this->idcards) ? (int)$this->idcards : null,
                     $this->language ?? 'RU',
-                    $this->notify_unconfirmed ? 1 : 0
+                    $this->notify_unconfirmed ? 1 : 0,
+                    $this->is_banned ? 1 : 0
                 ]);
 
                 if ($result) {
@@ -222,6 +227,14 @@ class Resident
                 }
             }
 
+            if (!empty($filters['ban_status'])) {
+                if ($filters['ban_status'] === 'banned') {
+                    $sql .= " AND r.is_banned IS TRUE";
+                } elseif ($filters['ban_status'] === 'active') {
+                    $sql .= " AND (r.is_banned IS FALSE OR r.is_banned IS NULL)";
+                }
+            }
+
             $sql .= " ORDER BY d.number ASC, r.last_name, r.first_name";
 
             $stmt = $db->prepare($sql);
@@ -244,6 +257,7 @@ class Resident
                 $r->max_id              = $row['max_id'] ?? null;
                 $r->language            = $row['language'] ?? 'RU';
                 $r->notify_unconfirmed  = isset($row['notify_unconfirmed']) ? (bool)$row['notify_unconfirmed'] : true;
+                $r->is_banned           = isset($row['is_banned']) ? (bool)$row['is_banned'] : false;
                 $r->dormitory_name      = $row['dormitory_name'] ?? ('Общежитие №' . $r->dormitory_id);
                 $residents[]            = $r;
             }
