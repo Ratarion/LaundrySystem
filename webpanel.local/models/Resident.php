@@ -22,6 +22,7 @@ class Resident
     public $vk_id;
     public $max_id;
     public $language;
+    public $notify_unconfirmed = true;
 
     // Дополнительные поля из JOIN
     public $dormitory_name;
@@ -49,18 +50,19 @@ class Resident
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($data) {
-                $this->id             = (int)$data['id'];
-                $this->dormitory_id   = !empty($data['dormitory_id']) ? (int)$data['dormitory_id'] : 1;
-                $this->last_name      = $data['last_name'];
-                $this->first_name     = $data['first_name'];
-                $this->patronymic     = $data['patronymic'];
-                $this->inidroom       = $data['inidroom'];
-                $this->idcards        = $data['idcards'];
-                $this->tg_id          = $data['tg_id'];
-                $this->vk_id          = $data['vk_id'];
-                $this->max_id         = $data['max_id'] ?? null;
-                $this->language       = $data['language'] ?? 'RU';
-                $this->dormitory_name = $data['dormitory_name'] ?? ('Общежитие №' . $this->dormitory_id);
+                $this->id                  = (int)$data['id'];
+                $this->dormitory_id        = !empty($data['dormitory_id']) ? (int)$data['dormitory_id'] : 1;
+                $this->last_name           = $data['last_name'];
+                $this->first_name          = $data['first_name'];
+                $this->patronymic          = $data['patronymic'];
+                $this->inidroom            = $data['inidroom'];
+                $this->idcards             = $data['idcards'];
+                $this->tg_id               = $data['tg_id'];
+                $this->vk_id               = $data['vk_id'];
+                $this->max_id              = $data['max_id'] ?? null;
+                $this->language            = $data['language'] ?? 'RU';
+                $this->notify_unconfirmed  = isset($data['notify_unconfirmed']) ? (bool)$data['notify_unconfirmed'] : true;
+                $this->dormitory_name      = $data['dormitory_name'] ?? ('Общежитие №' . $this->dormitory_id);
                 return true;
             }
             return false;
@@ -100,7 +102,8 @@ class Resident
                         first_name = ?, 
                         patronymic = ?, 
                         inidroom = ?,
-                        idcards = ?
+                        idcards = ?,
+                        notify_unconfirmed = ?
                     WHERE id = ?
                 ");
                 return $stmt->execute([
@@ -110,13 +113,14 @@ class Resident
                     $this->patronymic,
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
                     !empty($this->idcards) ? (int)$this->idcards : null,
+                    $this->notify_unconfirmed ? 1 : 0,
                     $this->id
                 ]);
             } else {
                 // INSERT
                 $stmt = $this->db->prepare("
-                    INSERT INTO residents (dormitory_id, last_name, first_name, patronymic, inidroom, idcards, language)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO residents (dormitory_id, last_name, first_name, patronymic, inidroom, idcards, language, notify_unconfirmed)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $result = $stmt->execute([
                     $dormId,
@@ -125,7 +129,8 @@ class Resident
                     $this->patronymic,
                     !empty($this->inidroom) ? (int)$this->inidroom : null,
                     !empty($this->idcards) ? (int)$this->idcards : null,
-                    $this->language ?? 'RU'
+                    $this->language ?? 'RU',
+                    $this->notify_unconfirmed ? 1 : 0
                 ]);
 
                 if ($result) {
@@ -149,11 +154,9 @@ class Resident
      */
     public function delete()
     {
-        if (!$this->id) return false;
-
         try {
             $stmt = $this->db->prepare("DELETE FROM residents WHERE id = ?");
-            return $stmt->execute([$this->id]);
+            return $stmt->execute([(int)$this->id]);
         } catch (PDOException $e) {
             error_log("Resident delete error: " . $e->getMessage());
             return false;
@@ -161,7 +164,7 @@ class Resident
     }
 
     /**
-     * Получить жителей (с опциональной фильтрацией по общежитию)
+     * Получить список всех жителей (с фильтрацией по общежитию)
      */
     public static function getAll(PDO $db, $dormitoryId = null)
     {
@@ -187,21 +190,23 @@ class Resident
             $residents = [];
             foreach ($rows as $row) {
                 $r = new self($db);
-                $r->id             = (int)$row['id'];
-                $r->dormitory_id   = !empty($row['dormitory_id']) ? (int)$row['dormitory_id'] : 1;
-                $r->last_name      = $row['last_name'];
-                $r->first_name     = $row['first_name'];
-                $r->patronymic     = $row['patronymic'];
-                $r->inidroom       = $row['inidroom'];
-                $r->idcards        = $row['idcards'];
-                $r->tg_id          = $row['tg_id'];
-                $r->vk_id          = $row['vk_id'];
-                $r->max_id         = $row['max_id'] ?? null;
-                $r->language       = $row['language'] ?? 'RU';
-                $r->dormitory_name = $row['dormitory_name'] ?? ('Общежитие №' . $r->dormitory_id);
-                $residents[]       = $r;
+                $r->id                  = (int)$row['id'];
+                $r->dormitory_id        = !empty($row['dormitory_id']) ? (int)$row['dormitory_id'] : 1;
+                $r->last_name           = $row['last_name'];
+                $r->first_name          = $row['first_name'];
+                $r->patronymic          = $row['patronymic'];
+                $r->inidroom            = $row['inidroom'];
+                $r->idcards             = $row['idcards'];
+                $r->tg_id               = $row['tg_id'];
+                $r->vk_id               = $row['vk_id'];
+                $r->max_id              = $row['max_id'] ?? null;
+                $r->language            = $row['language'] ?? 'RU';
+                $r->notify_unconfirmed  = isset($row['notify_unconfirmed']) ? (bool)$row['notify_unconfirmed'] : true;
+                $r->dormitory_name      = $row['dormitory_name'] ?? ('Общежитие №' . $r->dormitory_id);
+                $residents[]            = $r;
             }
             return $residents;
+
         } catch (PDOException $e) {
             error_log("Resident getAll error: " . $e->getMessage());
             return [];

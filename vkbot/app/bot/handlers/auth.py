@@ -2,7 +2,7 @@ from vkbottle import GroupEventType, OrRule
 from vkbottle.bot import BotLabeler, Message, MessageEvent
 from vkbottle.dispatch.rules.base import PayloadContainsRule, VBMLRule, StateRule
 
-from app.bot.keyboards import get_lang_keyboard, get_section_keyboard
+from app.bot.keyboards import get_lang_keyboard, get_section_keyboard, get_notifications_keyboard
 from app.bot.loader import api
 from app.laundry_repo import (
     get_user_by_vk_id,
@@ -10,6 +10,8 @@ from app.laundry_repo import (
     find_resident_by_id_card,
     activate_resident_user,
     update_user_language,
+    get_user_notify_status_by_vk,
+    toggle_user_notify_by_vk,
 )
 from app.bot.states import Auth
 from app.bot.utils.translate import get_lang_and_texts, ALL_TEXTS
@@ -153,6 +155,27 @@ async def process_id_card_auth(message: Message):
 async def process_change_language_btn(event: MessageEvent):
     """Кнопка 'Сменить язык' из главного меню (не привязана к конкретному состоянию)."""
     await event.edit_message(ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+
+
+@auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "notifications_menu"}))
+async def process_notifications_menu(event: MessageEvent):
+    lang, t = await get_lang_and_texts(event.peer_id)
+    is_enabled = await get_user_notify_status_by_vk(event.user_id)
+    status_str = t["status_enabled"] if is_enabled else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    await event.edit_message(text, keyboard=get_notifications_keyboard(is_enabled, lang))
+
+
+@auth_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "toggle_notifications"}))
+async def process_toggle_notifications(event: MessageEvent):
+    lang, t = await get_lang_and_texts(event.peer_id)
+    new_status = await toggle_user_notify_by_vk(event.user_id)
+    status_str = t["status_enabled"] if new_status else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    alert = t["notifications_toggled_on"] if new_status else t["notifications_toggled_off"]
+    await event.show_snackbar(alert)
+    await event.edit_message(text, keyboard=get_notifications_keyboard(new_status, lang))
+
 
 
 @auth_labeler.message(

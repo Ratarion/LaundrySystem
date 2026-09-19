@@ -3,13 +3,15 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
-from app.bot.keyboards import kb_welcom, get_section_keyboard
+from app.bot.keyboards import kb_welcom, get_section_keyboard, get_notifications_keyboard
 from app.repositories.laundry_repo import (
     get_user_by_tg_id,
     find_resident_by_fio,
     find_resident_by_id_card,
     activate_resident_user,
-    update_user_language 
+    update_user_language,
+    get_user_notify_status_by_tg,
+    toggle_user_notify_by_tg
 )
 from app.bot.states import Auth
 from app.bot.utils.translate import get_lang_and_texts, ALL_TEXTS
@@ -175,6 +177,36 @@ async def process_change_language_btn(callback: CallbackQuery, state: FSMContext
         reply_markup=kb_welcom
     )
     await callback.answer()
+
+
+@auth_router.callback_query(F.data == "notifications_menu")
+async def process_notifications_menu(callback: CallbackQuery, state: FSMContext):
+    lang, t = await get_lang_and_texts(state)
+    is_enabled = await get_user_notify_status_by_tg(callback.from_user.id)
+    status_str = t["status_enabled"] if is_enabled else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    await callback.message.edit_text(
+        text=text,
+        parse_mode="HTML",
+        reply_markup=get_notifications_keyboard(is_enabled, lang)
+    )
+    await callback.answer()
+
+
+@auth_router.callback_query(F.data == "toggle_notifications")
+async def process_toggle_notifications(callback: CallbackQuery, state: FSMContext):
+    lang, t = await get_lang_and_texts(state)
+    new_status = await toggle_user_notify_by_tg(callback.from_user.id)
+    status_str = t["status_enabled"] if new_status else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    alert = t["notifications_toggled_on"] if new_status else t["notifications_toggled_off"]
+    await callback.message.edit_text(
+        text=text,
+        parse_mode="HTML",
+        reply_markup=get_notifications_keyboard(new_status, lang)
+    )
+    await callback.answer(alert, show_alert=False)
+
 
 
 @auth_router.message(F.text.lower().in_({"/site", "сайт", "/web", "панель", "/panel"}))

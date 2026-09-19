@@ -13,6 +13,19 @@ CNtexts = {
         "exit": "退出",
         "back": "返回",
         "change_language": "🌐 更改语言",
+        "notifications_menu": "🔔 通知设置",
+        "notifications_settings_title": (
+            "🔔 <b>空闲时段通知设置</b>\n\n"
+            "当前状态: <b>{status}</b>\n\n"
+            "当有人取消预约或未及时确认时，机器人会发送通知，方便您快速预约空出的时段。\n\n"
+            "您可以开启或关闭此通知："
+        ),
+        "status_enabled": "已开启 ✅",
+        "status_disabled": "已关闭 🔕",
+        "disable_notifications_btn": "🔕 关闭通知",
+        "enable_notifications_btn": "🔔 开启通知",
+        "notifications_toggled_on": "🔔 空位通知已开启！",
+        "notifications_toggled_off": "🔕 空位通知已关闭。",
         "machine_type": "洗衣机",
         "select_machine_type": "选择机器类型",
         "for_wash": "用于洗涤",

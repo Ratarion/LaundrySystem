@@ -5,13 +5,15 @@ from typing import Optional
 import aiomax
 from aiomax import Router, Message, Callback, CommandContext, BotStartPayload, fsm
 
-from app.bot.keyboards import get_lang_keyboard, get_section_keyboard
+from app.bot.keyboards import get_lang_keyboard, get_section_keyboard, get_notifications_keyboard
 from app.laundry_repo import (
     get_user_by_max_id,
     find_resident_by_fio,
     find_resident_by_id_card,
     activate_resident_user,
     update_user_language,
+    get_user_notify_status_by_max,
+    toggle_user_notify_by_max,
 )
 from app.bot.states import Auth
 from app.bot.utils.translate import get_lang_and_texts, ALL_TEXTS
@@ -160,6 +162,28 @@ async def process_id_card_auth(message: Message, cursor: fsm.FSMCursor):
 @auth_router.on_button_callback(lambda cb: _is_cmd(cb, "change_language"))
 async def process_change_language_btn(cb: Callback, cursor: fsm.FSMCursor):
     await cb.answer(text=ALL_TEXTS["RU"]["welcome_lang_choice"], keyboard=get_lang_keyboard())
+
+
+@auth_router.on_button_callback(lambda cb: _is_cmd(cb, "notifications_menu"))
+async def process_notifications_menu(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    is_enabled = await get_user_notify_status_by_max(user_id)
+    status_str = t["status_enabled"] if is_enabled else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    await cb.answer(text=text, keyboard=get_notifications_keyboard(is_enabled, lang))
+
+
+@auth_router.on_button_callback(lambda cb: _is_cmd(cb, "toggle_notifications"))
+async def process_toggle_notifications(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    new_status = await toggle_user_notify_by_max(user_id)
+    status_str = t["status_enabled"] if new_status else t["status_disabled"]
+    text = t["notifications_settings_title"].format(status=status_str)
+    alert = t["notifications_toggled_on"] if new_status else t["notifications_toggled_off"]
+    await cb.answer(notification=alert, text=text, keyboard=get_notifications_keyboard(new_status, lang))
+
 
 
 @auth_router.on_message(lambda msg: (getattr(getattr(msg, "body", None), "text", None) or "").strip().lower() in ["/site", "сайт", "/web", "панель", "/panel"])

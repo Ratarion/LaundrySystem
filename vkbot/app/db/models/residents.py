@@ -1,4 +1,4 @@
-from sqlalchemy import String, BigInteger, Integer
+from sqlalchemy import String, BigInteger, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
@@ -17,3 +17,5 @@ class Resident(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     patronymic: Mapped[str] = mapped_column(String, nullable=False)
     language: Mapped[str] = mapped_column(String, default='RU', nullable=False)
+    notify_unconfirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+

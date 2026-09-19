@@ -80,14 +80,42 @@ async def update_user_language(max_id: int, new_language: str):
 
 async def get_all_users_with_max(dormitory_id: Optional[int] = None):
     """
-    Возвращает список (max_id, language) всех пользователей MAX (опционально по общежитию).
+    Возвращает список (max_id, language) всех пользователей MAX, у которых включены уведомления.
     """
     async with async_session() as session:
-        query = select(User.max_id, User.language).where(User.max_id.is_not(None))
+        query = select(User.max_id, User.language).where(
+            User.max_id.is_not(None),
+            User.notify_unconfirmed.is_(True)
+        )
         if dormitory_id:
             query = query.where(User.dormitory_id == dormitory_id)
         result = await session.execute(query)
         return result.all()
+
+
+async def get_user_notify_status_by_max(max_id: int) -> bool:
+    """Возвращает статус подписки на уведомления о свободных слотах для пользователя MAX."""
+    async with async_session() as session:
+        query = select(User.notify_unconfirmed).where(User.max_id == max_id)
+        result = await session.execute(query)
+        val = result.scalar_one_or_none()
+        return True if val is None else bool(val)
+
+
+async def toggle_user_notify_by_max(max_id: int) -> bool:
+    """Переключает статус подписки на уведомления о свободных слотах и возвращает новое значение."""
+    async with async_session() as session:
+        query = select(User).where(User.max_id == max_id)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        if user:
+            current = user.notify_unconfirmed if user.notify_unconfirmed is not None else True
+            user.notify_unconfirmed = not current
+            new_status = user.notify_unconfirmed
+            await session.commit()
+            return new_status
+        return True
+
 
 # ==========================================
 # РАБОТА С МАШИНАМИ И БРОНЯМИ

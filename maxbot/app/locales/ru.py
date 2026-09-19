@@ -14,6 +14,19 @@ RUtexts = {
         "exit": "Выйти",
         "back": "Назад",
         "change_language": "🌐 Сменить язык",
+        "notifications_menu": "🔔 Уведомления",
+        "notifications_settings_title": (
+            "🔔 Уведомления о свободных слотах\n\n"
+            "Текущий статус: {status}\n\n"
+            "Когда кто-то отменяет стирку или не подтверждает запись вовремя, бот рассылает сообщение с быстрой записью на освободившееся место.\n\n"
+            "Вы можете включить или отключить эту рассылку:"
+        ),
+        "status_enabled": "Включены ✅",
+        "status_disabled": "Отключены 🔕",
+        "disable_notifications_btn": "🔕 Отключить рассылку",
+        "enable_notifications_btn": "🔔 Включить рассылку",
+        "notifications_toggled_on": "🔔 Уведомления о свободных слотах включены!",
+        "notifications_toggled_off": "🔕 Уведомления о свободных слотах отключены.",
         "machine_type": "Машина",
         "select_machine_type": "Выберите тип машины",
         "for_wash": "для стирки",

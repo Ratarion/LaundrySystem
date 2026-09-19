@@ -33,6 +33,7 @@ class ResidentController extends BaseController
                 $resident->patronymic   = trim($_POST['patronymic'] ?? '');
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
+                $resident->notify_unconfirmed = !empty($_POST['notify_unconfirmed']);
                 if ($resident->save()) {
                     $this->log->info('Добавлен новый житель', ['room' => $resident->inidroom, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Житель успешно добавлен!';
@@ -55,6 +56,7 @@ class ResidentController extends BaseController
                 $resident->patronymic   = trim($_POST['patronymic'] ?? '');
                 $resident->inidroom     = trim($_POST['inidroom'] ?? '');
                 $resident->idcards      = trim($_POST['idcards'] ?? '');
+                $resident->notify_unconfirmed = !empty($_POST['notify_unconfirmed']);
                 if ($resident->save()) {
                     $this->log->info('Отредактирован житель', ['id' => $resident->id, 'dormitory_id' => $resident->dormitory_id, 'role' => $roleName]);
                     $successMessage = 'Данные жителя обновлены!';
@@ -94,8 +96,9 @@ class ResidentController extends BaseController
                     'last_name'    => $editResidentObj->last_name,
                     'first_name'   => $editResidentObj->first_name,
                     'patronymic'   => $editResidentObj->patronymic,
-                    'inidroom'     => $editResidentObj->inidroom,
-                    'idcards'      => $editResidentObj->idcards
+                    'inidroom'           => $editResidentObj->inidroom,
+                    'idcards'            => $editResidentObj->idcards,
+                    'notify_unconfirmed' => $editResidentObj->notify_unconfirmed
                 ];
             }
         }

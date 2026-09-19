@@ -34,14 +34,26 @@ def get_section_keyboard(lang: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text=t["show_records"], callback_data="show_records")],
             [InlineKeyboardButton(text=t["cancel_record"], callback_data="remove_records")],
             [InlineKeyboardButton(text=t.get("web_panel", "🌐 Перейти на сайт"), url="http://webpanel.beget.tech")],
+            [InlineKeyboardButton(text=t.get("notifications_menu", "🔔 Уведомления"), callback_data="notifications_menu")],
             [InlineKeyboardButton(text=t["change_language"], callback_data="change_language")],
             [InlineKeyboardButton(text=t["report_in_admin"], callback_data="report")],
+        ]
+    )
+
+def get_notifications_keyboard(is_enabled: bool, lang: str) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    toggle_text = t["disable_notifications_btn"] if is_enabled else t["enable_notifications_btn"]
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=toggle_text, callback_data="toggle_notifications")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
         ]
     )
 
 def get_exit_keyboard(lang: str) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
     return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t["exit"], callback_data="exit")]])
+
 
 
 def get_confirm_keyboard(booking_id: int, lang: str) -> InlineKeyboardMarkup:

@@ -215,14 +215,42 @@ async def cancel_booking(booking_id: int, user_tg_id: int = None) -> bool:
 
 async def get_all_users_with_tg(dormitory_id: Optional[int] = None) -> List[tuple[int, str]]:
     """
-    Возвращает список кортежей (tg_id, language) всех пользователей.
+    Возвращает список кортежей (tg_id, language) всех пользователей, у которых включены уведомления о свободных слотах.
     """
     async with async_session() as session:
-        query = select(User.tg_id, User.language).where(User.tg_id.is_not(None))
+        query = select(User.tg_id, User.language).where(
+            User.tg_id.is_not(None),
+            User.notify_unconfirmed.is_(True)
+        )
         if dormitory_id:
             query = query.where(User.dormitory_id == dormitory_id)
         result = await session.execute(query)
         return result.all()
+
+
+async def get_user_notify_status_by_tg(tg_id: int) -> bool:
+    """Возвращает статус подписки на уведомления о свободных слотах для пользователя TG."""
+    async with async_session() as session:
+        query = select(User.notify_unconfirmed).where(User.tg_id == tg_id)
+        result = await session.execute(query)
+        val = result.scalar_one_or_none()
+        return True if val is None else bool(val)
+
+
+async def toggle_user_notify_by_tg(tg_id: int) -> bool:
+    """Переключает статус подписки на уведомления о свободных слотах и возвращает новое значение."""
+    async with async_session() as session:
+        query = select(User).where(User.tg_id == tg_id)
+        result = await session.execute(query)
+        user = result.scalar_one_or_none()
+        if user:
+            current = user.notify_unconfirmed if user.notify_unconfirmed is not None else True
+            user.notify_unconfirmed = not current
+            new_status = user.notify_unconfirmed
+            await session.commit()
+            return new_status
+        return True
+
 
 # ==========================================
 # ОПТИМИЗИРОВАННАЯ ЛОГИКА КАЛЕНДАРЯ

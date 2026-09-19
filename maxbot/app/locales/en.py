@@ -14,6 +14,19 @@ ENtexts = {
         "exit": "Exit",
         "back": "Back",
         "change_language": "🌐 Change language",
+        "notifications_menu": "🔔 Notifications",
+        "notifications_settings_title": (
+            "🔔 Available slot notifications\n\n"
+            "Current status: {status}\n\n"
+            "When someone cancels a booking or does not confirm it in time, the bot sends a notification with quick booking for the freed slot.\n\n"
+            "You can turn these notifications on or off:"
+        ),
+        "status_enabled": "Enabled ✅",
+        "status_disabled": "Disabled 🔕",
+        "disable_notifications_btn": "🔕 Turn off notifications",
+        "enable_notifications_btn": "🔔 Turn on notifications",
+        "notifications_toggled_on": "🔔 Available slot notifications enabled!",
+        "notifications_toggled_off": "🔕 Available slot notifications disabled.",
         "machine_type": "Machine",
         "select_machine_type": "Select machine type",
         "confirm_booking_prompt": (

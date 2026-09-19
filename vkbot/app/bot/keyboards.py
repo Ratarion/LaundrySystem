@@ -65,11 +65,27 @@ def get_section_keyboard(lang: str) -> str:
         .row()
         .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
+        .add(Callback(t.get("notifications_menu", "🔔 Уведомления"), {"cmd": "notifications_menu"}), color=KeyboardButtonColor.SECONDARY)
+        .row()
         .add(Callback(t["change_language"], {"cmd": "change_language"}), color=KeyboardButtonColor.SECONDARY)
         .row()
         .add(Callback(t["report_in_admin"], {"cmd": "report"}), color=KeyboardButtonColor.NEGATIVE)
     )
     return kb.get_json()
+
+
+def get_notifications_keyboard(is_enabled: bool, lang: str) -> str:
+    t = _t(lang)
+    toggle_text = t["disable_notifications_btn"] if is_enabled else t["enable_notifications_btn"]
+    toggle_color = KeyboardButtonColor.NEGATIVE if is_enabled else KeyboardButtonColor.POSITIVE
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(toggle_text, {"cmd": "toggle_notifications"}), color=toggle_color)
+        .row()
+        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
+
 
 
 def get_exit_keyboard(lang: str) -> str:

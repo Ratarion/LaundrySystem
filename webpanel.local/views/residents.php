@@ -102,6 +102,13 @@
                 <input type="number" name="idcards" value="<?= e($editResident['idcards'] ?? '') ?>" required class="form-control" placeholder="123456">
             </div>
 
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                    <input type="checkbox" name="notify_unconfirmed" value="1" <?= (!isset($editResident) || !empty($editResident['notify_unconfirmed'])) ? 'checked' : '' ?> style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>🔔 Уведомления о свободных слотах (рассылка при отмене стирки)</span>
+                </label>
+            </div>
+
             <div style="display: flex; gap: 10px; align-items: flex-end;">
                 <button type="submit" class="btn btn-primary">
                     <?= $editResident ? 'Сохранить изменения' : 'Добавить жителя' ?>
@@ -125,7 +132,8 @@
                         <th>ФИО жителя</th>
                         <th style="text-align: center; width: 100px;">Комната</th>
                         <th style="text-align: center; width: 130px;">Зачётка/Карта</th>
-                        <th style="text-align: center; width: 180px;">Боты</th>
+                        <th style="text-align: center; width: 140px;">Боты</th>
+                        <th style="text-align: center; width: 140px;">Свободные слоты</th>
                         <th style="text-align: center; width: 220px;">Действия</th>
                     </tr>
                 </thead>
@@ -161,6 +169,17 @@
                             <?php endif; ?>
                             <?php if (empty($r->tg_id) && empty($r->vk_id) && empty($r->max_id)): ?>
                                 <span class="badge badge-secondary" style="opacity: 0.6;">Не подключён</span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align: center;">
+                            <?php if (!empty($r->notify_unconfirmed)): ?>
+                                <span class="badge" style="background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;" title="Получает уведомления о свободных слотах">
+                                    <i class="fa-solid fa-bell"></i> Вкл
+                                </span>
+                            <?php else: ?>
+                                <span class="badge" style="background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; opacity: 0.7;" title="Отключил уведомления">
+                                    <i class="fa-solid fa-bell-slash"></i> Выкл
+                                </span>
                             <?php endif; ?>
                         </td>
                         <td style="text-align: center;">
