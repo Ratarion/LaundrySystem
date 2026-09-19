@@ -38,6 +38,23 @@ import logging
 
 booking_router = Router()
 
+def get_calendar_header_with_legend(t: dict, machine_type_db: str, lang: str) -> str:
+    if machine_type_db == "Стиральная" or machine_type_db == t.get("machine_type_wash"):
+        base = f"📅 {t['record_start']} {t['for_wash']}"
+    else:
+        base = f"📅 {t['record_start']} {t['for_dry']}"
+    
+    legends = {
+        'ru': "🟢 свободно  🟡 есть места  🔴 занято  ⚪ закрыто",
+        'en': "🟢 available  🟡 few slots  🔴 full  ⚪ closed",
+        'cn': "🟢 空闲  🟡 少量余位  🔴 满额  ⚪ 不可用"
+    }
+    loc = (lang or 'ru').lower()
+    if loc not in legends:
+        loc = 'ru'
+    return f"{base}\n\n<i>{legends[loc]}</i>"
+
+
 # helper for colored calendar (можно использовать если нужно создать календарь отдельно)
 async def get_colored_calendar(year: int, month: int, locale: str, machine_type=None, dormitory_id: int = 1):
     workload = await get_month_workload(year, month, machine_type, dormitory_id=dormitory_id)
@@ -64,32 +81,26 @@ async def process_record_start(callback: CallbackQuery, state: FSMContext):
     max_capacity = await get_total_daily_capacity_by_type(dormitory_id=dormitory_id)
     if max_capacity == 0:
         await callback.answer(t["no_active_machines"], show_alert=True)
-        await callback.message.edit_text(t["section_menu_title"], reply_markup=get_section_keyboard(lang))
-        await state.clear()
         return
-    await state.update_data(max_capacity=max_capacity)
-    await callback.message.edit_text(
-        t["select_machine_type"],
-        reply_markup=get_machine_type_keyboard(lang)
-    )
+
     await state.set_state(AddRecord.waiting_for_machine_type)
+    await callback.message.edit_text(t["select_machine_type"], reply_markup=get_machine_type_keyboard(lang))
     await callback.answer()
 
 
-@booking_router.callback_query(F.data.startswith("type_"), AddRecord.waiting_for_machine_type)
+@booking_router.callback_query(F.data.in_(["wash", "dry"]), AddRecord.waiting_for_machine_type)
 async def process_machine_type(callback: CallbackQuery, state: FSMContext):
     lang, t = await get_lang_and_texts(state)
+    machine_type_callback = callback.data.upper() # "WASH" или "DRY"
     data = await state.get_data()
-    dormitory_id = data.get("dormitory_id", 1)
-    machine_type_callback = callback.data.split("_")[1] # "WASH" или "DRY"
+    dormitory_id = data.get('dormitory_id', 1)
     
     # ПРИВЯЗЫВАЕМСЯ К ЗНАЧЕНИЯМ В БД (они у тебя на русском)
     if machine_type_callback == "WASH":
         machine_type_db = "Стиральная"
-        header_text = f"📅 {t['record_start']} {t['for_wash']}"
     else:
         machine_type_db = "Сушильная"
-        header_text = f"📅 {t['record_start']} {t['for_dry']}"
+    header_text = get_calendar_header_with_legend(t, machine_type_db, lang)
 
     # Теперь в state и в запросы улетит "Стиральная", и БД найдет машины
     await state.update_data(machine_type=machine_type_db)
@@ -124,11 +135,8 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
     max_capacity = data.get('max_capacity', 0)
     machine_type_db = data.get('machine_type')
     
-    # Generate header_text consistently (reuse from process_machine_type logic)
-    if machine_type_db == "Стиральная":
-        header_text = f"📅 {t['record_start']} {t['for_wash']}"
-    else:
-        header_text = f"📅 {t['record_start']} {t['for_dry']}"
+    # Generate header_text consistently with color legend
+    header_text = get_calendar_header_with_legend(t, machine_type_db, lang)
     
     workload = await get_month_workload(callback_data.year, callback_data.month, machine_type_db, dormitory_id=dormitory_id)
     calendar = CustomLaundryCalendar(workload=workload, max_capacity=max_capacity, locale=lang.lower())
@@ -140,8 +148,8 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if date.date() < now_dt.date() or (date.date() == now_dt.date() and now_dt.time() >= time(23, 0)):
             await callback.answer(t["past_date_error"], show_alert=True)
             await callback.message.edit_text(
-                header_text,  # Use header_text or t["record_start"]
-                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
+                header_text,
+                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, header_text=header_text, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
             return
@@ -152,8 +160,8 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if free <= 0:
             await callback.answer(t["day_fully_booked"], show_alert=True)
             await callback.message.edit_text(
-                header_text,  # Use header_text or t["record_start"]
-                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
+                header_text,
+                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, header_text=header_text, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
             return
@@ -163,8 +171,8 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if await has_weekly_booking(user_id, date, machine_type_db):
             await callback.answer(t["weekly_limit_reached"], show_alert=True)
             await callback.message.edit_text(
-                header_text,  # FIXED: Use t["record_start"] or header_text (string, not list)
-                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
+                header_text,
+                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, header_text=header_text, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
             return
@@ -174,8 +182,8 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
         if not slots:
             await callback.answer(t["no_slots_available"], show_alert=True)
             await callback.message.edit_text(
-                header_text,  # Use header_text or t["record_start"]
-                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, back_callback="back_to_machine_type")
+                header_text,
+                reply_markup=await calendar.start_calendar(year=callback_data.year, month=callback_data.month, header_text=header_text, back_callback="back_to_machine_type")
             )
             await state.set_state(AddRecord.waiting_for_day)
             return
@@ -322,11 +330,8 @@ async def process_back_to_calendar(callback: CallbackQuery, state: FSMContext):
         locale=lang.lower()
     )
 
-    # Generate header text to be consistent
-    if machine_type_db == t.get("machine_type_wash"):
-         header_text = f"📅 {t['record_start']} {t['for_wash']}"
-    else:
-         header_text = f"📅 {t['record_start']} {t['for_dry']}"
+    # Generate header text to be consistent with color legend
+    header_text = get_calendar_header_with_legend(t, machine_type_db, lang)
 
     await callback.message.edit_text(
         header_text,

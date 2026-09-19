@@ -100,10 +100,11 @@ class CustomLaundryCalendar(SimpleCalendar):
             new_row = []
             has_days = False
             for btn in row:
-                # Check if this button is a day number
-                if btn.text.isdigit():
+                # Check if this button is a day number (strip brackets if today e.g. [19])
+                clean_num = btn.text.strip('[] ')
+                if clean_num.isdigit():
                     has_days = True
-                    day = int(btn.text)
+                    day = int(clean_num)
                     used = self.workload.get(day, 0)
                     free = self.max_capacity - used if self.max_capacity > 0 else 0
 
@@ -114,13 +115,13 @@ class CustomLaundryCalendar(SimpleCalendar):
                     current_day = datetime(year, month, day).date()
 
                     if current_day < today_date or (current_day == today_date and now_time >= time(23, 0)):
-                        btn.text = f"{day} ⚪"
+                        btn.text = f"{day}⚪"
                     elif free <= 0:
-                        btn.text = f"{day} 🔴"
+                        btn.text = f"{day}🔴"
                     elif used == 0:
-                        btn.text = f"{day} 🟢"
+                        btn.text = f"{day}🟢"
                     else:
-                        btn.text = f"{day} 🟡"
+                        btn.text = f"{day}🟡"
                 
                 # Filter out standard navigation buttons if you don't want them (Cancel, Today)
                 # or keep them if they are part of the day rows.
