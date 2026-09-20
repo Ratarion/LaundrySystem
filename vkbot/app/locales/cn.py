@@ -112,6 +112,25 @@ CNtexts = {
         "discipline_autocancel_penalty": "⚠️ 未取消且逾期未确认，扣除 {delta} 积分！当前积分：{score}。",
         "discipline_banned_alert": "🚫 注意：您的积分已降至 0 分，预约功能已被锁定，请联系宿舍管理员。",
         "discipline_profile_title": "⭐️ 纪律与信用积分\n\n👤 住户：{name}\n🏆 等级：{badge} {rank}\n📊 积分：{score} / 200\n🔥 准时连击：{confirm_streak}\n⚠️ 违约连击：{miss_streak}\n\n📋 规则：\n• 准时确认：+5 分（连击奖励最高 +12）\n• 提前取消：+2 分\n• 确认期放弃：+1 分\n• 违约逾期：-15..-40 分\n\n🕒 近期记录：\n{history}",
-        "discipline_no_history": "暂无积分变动记录。"
+        "discipline_no_history": "暂无积分变动记录。",
+
+        # --- 信息与关于 ---
+        "info_btn": "ℹ️ 信息与关于",
+        "reply_btn_info": "ℹ️ 信息",
+        "vk_community_btn": "🧺 KuzSTU 洗衣房 (VK)",
+        "info_screen_text": (
+            "ℹ️ KuzSTU 洗衣房服务信息\n\n"
+            "🧺 官方社区:\n"
+            "VK: KuzSTU 洗衣房 (https://vk.ru/kuzstu_stirka)\n\n"
+            "👨‍💻 开发者联系方式:\n"
+            "• Stas Yakushev:\n"
+            "  Telegram: @JokMiler (https://t.me/JokMiler)\n"
+            "  VK: Stas Yakushev (https://vk.ru/ratarion)\n"
+            "• 开发者:\n"
+            "  Telegram: @nrg0412 (https://t.me/nrg0412)\n"
+            "  VK: https://vk.ru/nrg412\n\n"
+            "⭐️ 纪律积分与荣誉殿堂:\n"
+            "查看您的纪律积分与连击，或访问宿舍区荣誉殿堂。"
+        )
     }
 }

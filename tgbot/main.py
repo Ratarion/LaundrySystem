@@ -40,6 +40,7 @@ async def setup_bot_commands(bot_instance: Bot):
         BotCommand(command="menu", description="Главное меню"),
         BotCommand(command="records", description="Мои записи"),
         BotCommand(command="rating", description="Рейтинг дисциплины и баллы"),
+        BotCommand(command="info", description="Информация о сервисе и контакты"),
         BotCommand(command="settings", description="Настройки"),
     ]
     try:

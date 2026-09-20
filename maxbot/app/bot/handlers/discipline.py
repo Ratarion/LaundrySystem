@@ -5,7 +5,7 @@ from typing import Optional
 from aiomax import Router, Callback, Message, fsm
 
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_rating_keyboard
+from app.bot.keyboards import get_rating_keyboard, get_info_keyboard
 from app.laundry_repo import get_user_by_max_id
 from app.services.discipline_service import get_resident_discipline_card
 from app.bot.utils.text import strip_html
@@ -20,6 +20,26 @@ def _is_cmd(cb: Callback, cmd_name: str) -> bool:
         return data.get("cmd") == cmd_name
     except Exception:
         return cb.payload == cmd_name
+
+
+@discipline_router.on_button_callback(lambda cb: _is_cmd(cb, "info_menu"))
+async def show_info_menu_cb(cb: Callback, cursor: fsm.FSMCursor):
+    user_id = cb.user.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    user = await get_user_by_max_id(user_id)
+    info_text = strip_html(t.get("info_screen_text", "ℹ️ Информация о сервисе «Стирка КузГТУ»"))
+    await cb.answer(text=info_text, keyboard=get_info_keyboard(lang, user.id if user else None))
+
+
+@discipline_router.on_message(lambda msg: (msg.text or "").strip() in {
+    "ℹ️ Информация", "Информация", "/info", "Info", "ℹ️ Information", "Information", "ℹ️ 信息", "信息"
+})
+async def show_info_menu_msg(message: Message, cursor: fsm.FSMCursor):
+    user_id = message.sender.user_id
+    lang, t = await get_lang_and_texts(user_id, cursor=cursor)
+    user = await get_user_by_max_id(user_id)
+    info_text = strip_html(t.get("info_screen_text", "ℹ️ Информация о сервисе «Стирка КузГТУ»"))
+    await message.reply(text=info_text, keyboard=get_info_keyboard(lang, user.id if user else None))
 
 
 @discipline_router.on_button_callback(lambda cb: _is_cmd(cb, "show_rating"))

@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_rating_keyboard
+from app.bot.keyboards import get_rating_keyboard, get_info_keyboard
 from app.repositories.laundry_repo import get_user_by_tg_id
 from app.services.discipline_service import get_resident_discipline_card
 
@@ -13,6 +13,34 @@ logger = logging.getLogger(__name__)
 
 
 from aiogram.filters import Command
+
+@discipline_router.message(Command("info"))
+@discipline_router.message(F.text.func(lambda text: bool(text and any(k in text.lower() for k in ["инфо", "информац", "info", "关于", "信息"]))))
+@discipline_router.callback_query(F.data.in_({"info_menu", "show_info", "info"}))
+async def show_info_menu(event: CallbackQuery | Message, state: FSMContext = None):
+    is_callback = isinstance(event, CallbackQuery)
+    user_id = event.from_user.id
+    lang, t = await get_lang_and_texts(state, tg_id=user_id)
+    user = await get_user_by_tg_id(user_id)
+
+    info_text = t.get("info_screen_text", "ℹ️ Информация о сервисе «Стирка КузГТУ»")
+    kb = get_info_keyboard(lang, user.id if user else None)
+
+    if is_callback:
+        await event.message.edit_text(
+            info_text,
+            reply_markup=kb,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        await event.answer()
+    else:
+        await event.answer(
+            info_text,
+            reply_markup=kb,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
 
 @discipline_router.message(Command("rating"))
 @discipline_router.message(F.text.func(lambda text: bool(text and ("рейтинг" in text.lower() or "rating" in text.lower() or "积分" in text))))

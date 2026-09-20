@@ -50,6 +50,8 @@ def get_main_reply_keyboard(lang: str = "RU") -> str:
         .row()
         .add(Text(t.get("reply_btn_my_records", "📋 Мои записи")), color=KeyboardButtonColor.SECONDARY)
         .add(Text(t.get("reply_btn_settings", "⚙️ Настройки")), color=KeyboardButtonColor.SECONDARY)
+        .row()
+        .add(Text(t.get("reply_btn_info", "ℹ️ Информация")), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 
@@ -90,11 +92,27 @@ def get_section_keyboard(lang: str) -> str:
         .row()
         .add(Callback(t["cancel_record"], {"cmd": "remove_records"}), color=KeyboardButtonColor.SECONDARY)
         .row()
-        .add(Callback(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), {"cmd": "show_rating"}), color=KeyboardButtonColor.POSITIVE)
+        .add(Callback(t.get("info_btn", "ℹ️ Информация"), {"cmd": "info_menu"}), color=KeyboardButtonColor.POSITIVE)
         .row()
         .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
         .add(Callback(t.get("settings", "⚙️ Настройки"), {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
+
+
+def get_info_keyboard(lang: str, resident_id: int | None = None) -> str:
+    t = _t(lang)
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), {"cmd": "show_rating"}), color=KeyboardButtonColor.POSITIVE)
+        .row()
+        .add(OpenLink(url, t.get("hall_of_fame_btn", "🏆 Зал славы")))
+        .row()
+        .add(OpenLink("https://vk.ru/kuzstu_stirka", t.get("vk_community_btn", "🧺 Стирка КузГТУ (ВК)")))
+        .row()
+        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 
@@ -106,7 +124,7 @@ def get_rating_keyboard(lang: str, resident_id: int | None = None) -> str:
         Keyboard(inline=True)
         .add(OpenLink(url, t.get("hall_of_fame_btn", "🏆 Зал славы")))
         .row()
-        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
+        .add(Callback(t["back"], {"cmd": "info_menu"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 

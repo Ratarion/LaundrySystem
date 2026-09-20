@@ -43,6 +43,9 @@ def get_main_reply_keyboard(lang: str = "RU") -> KeyboardBuilder:
         MessageButton(t.get("reply_btn_my_records", "📋 Мои записи")),
         MessageButton(t.get("reply_btn_settings", "⚙️ Настройки"))
     )
+    kb.row(
+        MessageButton(t.get("reply_btn_info", "ℹ️ Информация"))
+    )
     return kb
 
 
@@ -65,9 +68,20 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     kb.row(CallbackButton(t["record_laundry"], _payload("record"), intent="positive"))
     kb.row(CallbackButton(t["show_records"], _payload("show_records"), intent="default"))
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
-    kb.row(CallbackButton(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), _payload("show_rating"), intent="positive"))
+    kb.row(CallbackButton(t.get("info_btn", "ℹ️ Информация"), _payload("info_menu"), intent="positive"))
     kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
     kb.row(CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"))
+    return kb
+
+
+def get_info_keyboard(lang: str, resident_id: int | None = None) -> KeyboardBuilder:
+    t = _t(lang)
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), _payload("show_rating"), intent="positive"))
+    kb.row(LinkButton(t.get("hall_of_fame_btn", "🏆 Зал славы"), url))
+    kb.row(LinkButton(t.get("vk_community_btn", "🧺 Стирка КузГТУ (ВК)"), "https://vk.ru/kuzstu_stirka"))
+    kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
 
 
@@ -76,7 +90,7 @@ def get_rating_keyboard(lang: str, resident_id: int | None = None) -> KeyboardBu
     url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
     kb = KeyboardBuilder()
     kb.row(LinkButton(t.get("hall_of_fame_btn", "🏆 Зал славы"), url))
-    kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
+    kb.row(CallbackButton(t["back"], _payload("info_menu"), intent="default"))
     return kb
 
 

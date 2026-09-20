@@ -30,6 +30,9 @@ def get_main_reply_keyboard(lang: str = "RU") -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text=t.get("reply_btn_my_records", "📋 Мои записи")),
                 KeyboardButton(text=t.get("reply_btn_settings", "⚙️ Настройки"))
+            ],
+            [
+                KeyboardButton(text=t.get("reply_btn_info", "ℹ️ Информация"))
             ]
         ],
         resize_keyboard=True,
@@ -76,9 +79,21 @@ def get_section_keyboard(lang: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text=t["record_laundry"], callback_data="record")],
             [InlineKeyboardButton(text=t["show_records"], callback_data="show_records")],
             [InlineKeyboardButton(text=t["cancel_record"], callback_data="remove_records")],
-            [InlineKeyboardButton(text=t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), callback_data="show_rating")],
+            [InlineKeyboardButton(text=t.get("info_btn", "ℹ️ Информация"), callback_data="info_menu")],
             [InlineKeyboardButton(text=t.get("web_panel", "🌐 Перейти на сайт"), url="http://webpanel.beget.tech")],
             [InlineKeyboardButton(text=t.get("settings", "⚙️ Настройки"), callback_data="settings_menu")],
+        ]
+    )
+
+def get_info_keyboard(lang: str, resident_id: int | None = None) -> InlineKeyboardMarkup:
+    t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), callback_data="show_rating")],
+            [InlineKeyboardButton(text=t.get("hall_of_fame_btn", "🏆 Зал славы"), url=url)],
+            [InlineKeyboardButton(text=t.get("vk_community_btn", "🧺 Стирка КузГТУ (ВК)"), url="https://vk.ru/kuzstu_stirka")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
         ]
     )
 
@@ -88,7 +103,7 @@ def get_rating_keyboard(lang: str, resident_id: int | None = None) -> InlineKeyb
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=t.get("hall_of_fame_btn", "🏆 Зал славы"), url=url)],
-            [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
+            [InlineKeyboardButton(text=t["back"], callback_data="info_menu")]
         ]
     )
 

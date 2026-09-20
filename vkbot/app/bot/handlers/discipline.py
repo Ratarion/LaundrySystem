@@ -4,13 +4,31 @@ from vkbottle.bot import BotLabeler, MessageEvent, Message
 from vkbottle.dispatch.rules.base import PayloadContainsRule
 
 from app.bot.utils.translate import get_lang_and_texts
-from app.bot.keyboards import get_rating_keyboard
+from app.bot.keyboards import get_rating_keyboard, get_info_keyboard
 from app.laundry_repo import get_user_by_vk_id
 from app.services.discipline_service import get_resident_discipline_card
 from app.bot.utils.text import strip_html
 
 discipline_labeler = BotLabeler()
 logger = logging.getLogger(__name__)
+
+
+@discipline_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "info_menu"}))
+async def show_info_menu_event(event: MessageEvent):
+    peer_id = event.peer_id
+    lang, t = await get_lang_and_texts(peer_id)
+    user = await get_user_by_vk_id(event.user_id)
+    info_text = strip_html(t.get("info_screen_text", "ℹ️ Информация о сервисе «Стирка КузГТУ»"))
+    await event.edit_message(info_text, keyboard=get_info_keyboard(lang, user.id if user else None))
+
+
+@discipline_labeler.message(text=["ℹ️ Информация", "Информация", "/info", "Info", "ℹ️ Information", "Information", "ℹ️ 信息", "信息"])
+async def show_info_menu_msg(message: Message):
+    peer_id = message.peer_id
+    lang, t = await get_lang_and_texts(peer_id)
+    user = await get_user_by_vk_id(message.from_id)
+    info_text = strip_html(t.get("info_screen_text", "ℹ️ Информация о сервисе «Стирка КузГТУ»"))
+    await message.answer(info_text, keyboard=get_info_keyboard(lang, user.id if user else None))
 
 
 @discipline_labeler.raw_event(GroupEventType.MESSAGE_EVENT, MessageEvent, PayloadContainsRule({"cmd": "show_rating"}))

@@ -111,6 +111,25 @@ ENtexts = {
         "discipline_autocancel_penalty": "⚠️ <b>Penalty: {delta} points</b> for missed booking without cancellation! Current score: {score}.",
         "discipline_banned_alert": "🚫 <b>Warning:</b> your score reached 0. Booking is locked. Please contact the dorm manager.",
         "discipline_profile_title": "⭐️ <b>Discipline Rating</b>\n\n👤 <b>Resident:</b> {name}\n🏆 <b>Rank:</b> {badge} {rank}\n📊 <b>Score:</b> {score} / 200\n🔥 <b>Confirmation streak:</b> {confirm_streak}\n⚠️ <b>Miss streak:</b> {miss_streak}\n\n📋 <b>Rules:</b>\n• On-time confirmation: +5 pts (+streak bonus up to +12)\n• Early cancellation: +2 pts\n• Decline during prompt: +1 pt\n• Missed without cancel: -15..-40 pts\n\n🕒 <b>Recent activity:</b>\n{history}",
-        "discipline_no_history": "No score transactions yet."
+        "discipline_no_history": "No score transactions yet.",
+
+        # --- Information section ---
+        "info_btn": "ℹ️ Information",
+        "reply_btn_info": "ℹ️ Information",
+        "vk_community_btn": "🧺 KuzSTU Laundry (VK)",
+        "info_screen_text": (
+            "ℹ️ <b>KuzSTU Laundry Service Information</b>\n\n"
+            "🧺 <b>Official Community:</b>\n"
+            "VK: <a href=\"https://vk.ru/kuzstu_stirka\">KuzSTU Laundry</a> (vk.ru/kuzstu_stirka)\n\n"
+            "👨‍💻 <b>Developer Contacts:</b>\n"
+            "• <b>Stas Yakushev:</b>\n"
+            "  Telegram: <a href=\"https://t.me/JokMiler\">@JokMiler</a>\n"
+            "  VK: <a href=\"https://vk.ru/ratarion\">Stas Yakushev</a>\n"
+            "• <b>Developer:</b>\n"
+            "  Telegram: <a href=\"https://t.me/nrg0412\">@nrg0412</a>\n"
+            "  VK: <a href=\"https://vk.ru/nrg412\">vk.ru/nrg412</a>\n\n"
+            "⭐️ <b>Rating & Hall of Fame:</b>\n"
+            "Check your discipline score, active streak, or view the campus Hall of Fame."
+        )
     }
 }

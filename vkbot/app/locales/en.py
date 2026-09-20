@@ -112,6 +112,25 @@ ENtexts = {
         "discipline_autocancel_penalty": "⚠️ Penalty: {delta} points for missed booking without cancellation! Current score: {score}.",
         "discipline_banned_alert": "🚫 Warning: your score reached 0. Booking is locked. Please contact the dorm manager.",
         "discipline_profile_title": "⭐️ Discipline Rating\n\n👤 Resident: {name}\n🏆 Rank: {badge} {rank}\n📊 Score: {score} / 200\n🔥 Confirmation streak: {confirm_streak}\n⚠️ Miss streak: {miss_streak}\n\n📋 Rules:\n• On-time confirmation: +5 pts (+streak bonus up to +12)\n• Early cancellation: +2 pts\n• Decline during prompt: +1 pt\n• Missed without cancel: -15..-40 pts\n\n🕒 Recent activity:\n{history}",
-        "discipline_no_history": "No score transactions yet."
+        "discipline_no_history": "No score transactions yet.",
+
+        # --- Information section ---
+        "info_btn": "ℹ️ Information",
+        "reply_btn_info": "ℹ️ Information",
+        "vk_community_btn": "🧺 KuzSTU Laundry (VK)",
+        "info_screen_text": (
+            "ℹ️ KuzSTU Laundry Service Information\n\n"
+            "🧺 Official Community:\n"
+            "VK: KuzSTU Laundry (https://vk.ru/kuzstu_stirka)\n\n"
+            "👨‍💻 Developer Contacts:\n"
+            "• Stas Yakushev:\n"
+            "  Telegram: @JokMiler (https://t.me/JokMiler)\n"
+            "  VK: Stas Yakushev (https://vk.ru/ratarion)\n"
+            "• Developer:\n"
+            "  Telegram: @nrg0412 (https://t.me/nrg0412)\n"
+            "  VK: https://vk.ru/nrg412\n\n"
+            "⭐️ Rating & Hall of Fame:\n"
+            "Check your discipline score, active streak, or view the campus Hall of Fame."
+        )
     }
 }

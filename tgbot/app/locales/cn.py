@@ -109,6 +109,25 @@ CNtexts = {
         "discipline_autocancel_penalty": "⚠️ 未取消且逾期未确认，<b>扣除 {delta} 积分</b>！当前积分：{score}。",
         "discipline_banned_alert": "🚫 <b>注意：</b>您的积分已降至 0 分，预约功能已被锁定，请联系宿舍管理员。",
         "discipline_profile_title": "⭐️ <b>纪律与信用积分</b>\n\n👤 <b>住户：</b> {name}\n🏆 <b>等级：</b> {badge} {rank}\n📊 <b>积分：</b> {score} / 200\n🔥 <b>准时连击：</b> {confirm_streak}\n⚠️ <b>违约连击：</b> {miss_streak}\n\n📋 <b>规则：</b>\n• 准时确认：+5 分（连击奖励最高 +12）\n• 提前取消：+2 分\n• 确认期放弃：+1 分\n• 违约逾期：-15..-40 分\n\n🕒 <b>近期记录：</b>\n{history}",
-        "discipline_no_history": "暂无积分变动记录。"
+        "discipline_no_history": "暂无积分变动记录。",
+
+        # --- 信息与关于 ---
+        "info_btn": "ℹ️ 信息与关于",
+        "reply_btn_info": "ℹ️ 信息",
+        "vk_community_btn": "🧺 KuzSTU 洗衣房 (VK)",
+        "info_screen_text": (
+            "ℹ️ <b>KuzSTU 洗衣房服务信息</b>\n\n"
+            "🧺 <b>官方社区:</b>\n"
+            "VK: <a href=\"https://vk.ru/kuzstu_stirka\">KuzSTU 洗衣房</a> (vk.ru/kuzstu_stirka)\n\n"
+            "👨‍💻 <b>开发者联系方式:</b>\n"
+            "• <b>Stas Yakushev:</b>\n"
+            "  Telegram: <a href=\"https://t.me/JokMiler\">@JokMiler</a>\n"
+            "  VK: <a href=\"https://vk.ru/ratarion\">Stas Yakushev</a>\n"
+            "• <b>开发者:</b>\n"
+            "  Telegram: <a href=\"https://t.me/nrg0412\">@nrg0412</a>\n"
+            "  VK: <a href=\"https://vk.ru/nrg412\">vk.ru/nrg412</a>\n\n"
+            "⭐️ <b>纪律积分与荣誉殿堂:</b>\n"
+            "查看您的纪律积分与连击，或访问宿舍区荣誉殿堂。"
+        )
     }
 }
