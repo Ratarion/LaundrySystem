@@ -33,22 +33,10 @@ async def send_main_menu(message_or_cb, user, lang: str, t: dict):
         t.get("quick_access_menu_hint", "Меню быстрого доступа активировано ⬇️"),
         reply_markup=get_main_reply_keyboard(lang)
     )
-    score = getattr(user, "score", 100) if getattr(user, "score", None) is not None else 100
-    streak = getattr(user, "confirm_streak", 0) if getattr(user, "confirm_streak", None) is not None else 0
-    from app.services.discipline_service import get_rank_info
-    rank_info = get_rank_info(score, streak)
-    rank_name = rank_info.get(lang, rank_info.get("RU", "Дисциплинированный"))
-    badge = rank_info.get("badge", "🟢")
-
     greeting = t['hello_user'].replace('{name}', name)
-    rating_line = f"⭐️ <b>{score} баллов</b> ({badge} {rank_name}) | Серия: 🔥 {streak}" if lang == "RU" else (
-        f"⭐️ <b>{score} pts</b> ({badge} {rank_name}) | Streak: 🔥 {streak}" if lang == "ENG" else
-        f"⭐️ <b>{score} 积分</b> ({badge} {rank_name}) | 连击: 🔥 {streak}"
-    )
-    full_text = f"{greeting}\n{rating_line}"
 
     await target.answer(
-        full_text,
+        greeting,
         reply_markup=get_section_keyboard(lang),
         parse_mode="HTML"
     )
