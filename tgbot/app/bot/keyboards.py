@@ -15,11 +15,11 @@ def get_start_reply_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(text="🚀 Начать"), KeyboardButton(text="/start")]
         ],
         resize_keyboard=True,
-        is_persistent=True
+        is_persistent=False
     )
 
 def get_main_reply_keyboard(lang: str = "RU") -> ReplyKeyboardMarkup:
-    """Постоянная нижняя панель быстрого доступа возле ввода текста"""
+    """Нижняя панель быстрого доступа возле ввода текста (складываемая)"""
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -33,7 +33,7 @@ def get_main_reply_keyboard(lang: str = "RU") -> ReplyKeyboardMarkup:
             ]
         ],
         resize_keyboard=True,
-        is_persistent=True
+        is_persistent=False
     )
 
 kb_welcom = InlineKeyboardMarkup(inline_keyboard=[
