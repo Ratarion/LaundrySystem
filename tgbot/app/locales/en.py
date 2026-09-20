@@ -101,6 +101,16 @@ ENtexts = {
         "reply_btn_my_records": "📋 My Bookings",
         "reply_btn_settings": "⚙️ Settings",
         "reply_btn_start": "🚀 Start",
-        "quick_access_menu_hint": "Quick access menu activated ⬇️"
+        "quick_access_menu_hint": "Quick access menu activated ⬇️",
+
+        # --- Gamification and discipline rating ---
+        "discipline_rating_btn": "⭐️ My Rating",
+        "discipline_confirm_bonus": "🎉 <b>+{delta} points</b> for discipline! (Streak: 🔥 {streak}, score: {score})",
+        "discipline_decline_reward": "👍 <b>+{delta} point</b> for timely cancellation (slot freed). Score: {score}",
+        "discipline_early_cancel_reward": "👍 <b>+{delta} points</b> for early cancellation! Score: {score}",
+        "discipline_autocancel_penalty": "⚠️ <b>Penalty: {delta} points</b> for missed booking without cancellation! Current score: {score}.",
+        "discipline_banned_alert": "🚫 <b>Warning:</b> your score reached 0. Booking is locked. Please contact the dorm manager.",
+        "discipline_profile_title": "⭐️ <b>Discipline Rating</b>\n\n👤 <b>Resident:</b> {name}\n🏆 <b>Rank:</b> {badge} {rank}\n📊 <b>Score:</b> {score} / 200\n🔥 <b>Confirmation streak:</b> {confirm_streak}\n⚠️ <b>Miss streak:</b> {miss_streak}\n\n📋 <b>Rules:</b>\n• On-time confirmation: +5 pts (+streak bonus up to +12)\n• Early cancellation: +2 pts\n• Decline during prompt: +1 pt\n• Missed without cancel: -15..-40 pts\n\n🕒 <b>Recent activity:</b>\n{history}",
+        "discipline_no_history": "No score transactions yet."
     }
 }

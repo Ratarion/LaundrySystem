@@ -162,7 +162,8 @@ class Booking
         try {
             $sql = "
                 SELECT b.id, b.dormitory_id, b.start_time, b.end_time, b.status,
-                       r.last_name, r.first_name, r.patronymic, r.inidroom,
+                       r.id AS resident_id, r.last_name, r.first_name, r.patronymic, r.inidroom,
+                       r.score, r.confirm_streak, r.miss_streak,
                        m.id AS machine_id, m.type_machine, m.number_machine,
                        d.name AS dormitory_name
                 FROM booking b

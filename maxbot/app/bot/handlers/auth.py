@@ -44,7 +44,18 @@ def _get_payload(cb: Callback) -> dict:
 
 
 async def _send_main_menu(user_id: int, user, lang: str, t: dict, cb: Optional[Callback] = None, message: Optional[Message] = None):
-    text = t["hello_user"].format(name=user.first_name)
+    score = getattr(user, "score", 100) if getattr(user, "score", None) is not None else 100
+    streak = getattr(user, "confirm_streak", 0) if getattr(user, "confirm_streak", None) is not None else 0
+    from app.services.discipline_service import get_rank_info
+    rank_info = get_rank_info(score, streak)
+    rank_name = rank_info.get(lang, rank_info.get("RU", "Дисциплинированный"))
+    badge = rank_info.get("badge", "🟢")
+
+    rating_line = f"⭐️ {score} баллов ({badge} {rank_name}) | Серия: 🔥 {streak}" if lang == "RU" else (
+        f"⭐️ {score} pts ({badge} {rank_name}) | Streak: 🔥 {streak}" if lang == "ENG" else
+        f"⭐️ {score} 积分 ({badge} {rank_name}) | 连击: 🔥 {streak}"
+    )
+    text = f"{t['hello_user'].format(name=user.first_name)}\n{rating_line}"
     kb = get_section_keyboard(lang)
     if cb is not None:
         await cb.answer(text=text, keyboard=kb)

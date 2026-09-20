@@ -76,10 +76,25 @@ async def process_cancel_booking(callback: CallbackQuery, state: FSMContext, bot
     if success:
         await callback.answer(t["cancel_confirm_success"], show_alert=True)
         
+        cancel_success_msg = t["cancel_confirm_success"]
+        try:
+            from app.services.discipline_service import apply_discipline_event, EVENT_EARLY_CANCEL
+            disc_res = await apply_discipline_event(booking.inidresidents, booking_id, EVENT_EARLY_CANCEL)
+            if disc_res:
+                reward_text = t.get("discipline_early_cancel_reward", "").format(
+                    delta=disc_res["delta"],
+                    score=disc_res["new_score"]
+                )
+                if reward_text:
+                    cancel_success_msg = f"{cancel_success_msg}\n\n{reward_text}"
+        except Exception as e:
+            logging.error(f"Error applying discipline on early cancel for booking {booking_id}: {e}")
+
         # Возвращаем пользователя в меню или список
         await callback.message.edit_text(
-            t["cancel_confirm_success"],
-            reply_markup=get_back_to_sections_keyboard(lang)
+            cancel_success_msg,
+            reply_markup=get_back_to_sections_keyboard(lang),
+            parse_mode="HTML"
         )
         await state.clear()
 

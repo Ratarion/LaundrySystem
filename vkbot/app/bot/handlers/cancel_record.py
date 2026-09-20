@@ -67,7 +67,21 @@ async def process_cancel_booking(event: MessageEvent):
 
     if success:
         await event.show_snackbar(t["cancel_confirm_success"])
-        await event.edit_message(t["cancel_confirm_success"], keyboard=get_back_to_sections_keyboard(lang))
+        cancel_success_msg = t["cancel_confirm_success"]
+        try:
+            from app.services.discipline_service import apply_discipline_event, EVENT_EARLY_CANCEL
+            disc_res = await apply_discipline_event(booking.inidresidents, booking_id, EVENT_EARLY_CANCEL)
+            if disc_res:
+                reward_text = t.get("discipline_early_cancel_reward", "").format(
+                    delta=disc_res["delta"],
+                    score=disc_res["new_score"]
+                )
+                if reward_text:
+                    cancel_success_msg = f"{cancel_success_msg}\n\n{reward_text}"
+        except Exception as e:
+            logger.error(f"Error applying discipline on early cancel for booking {booking_id}: {e}")
+
+        await event.edit_message(cancel_success_msg, keyboard=get_back_to_sections_keyboard(lang))
         await clear_state(peer_id)
 
         asyncio.create_task(

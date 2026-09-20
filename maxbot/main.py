@@ -18,6 +18,7 @@ from app.bot.handlers.records import records_router
 from app.bot.handlers.cancel_record import cancel_record_router
 from app.bot.handlers.confirmation import confirm_router
 from app.bot.handlers.report import report_router
+from app.bot.handlers.discipline import discipline_router
 from app.bot.utils.scheduler import start_scheduler
 from app.db.base import init_db
 
@@ -42,6 +43,7 @@ async def main():
     bot.add_router(cancel_record_router)
     bot.add_router(confirm_router)
     bot.add_router(report_router)
+    bot.add_router(discipline_router)
 
     start_scheduler(bot)
 

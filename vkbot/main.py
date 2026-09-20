@@ -18,6 +18,7 @@ from app.bot.handlers.records import records_labeler
 from app.bot.handlers.report import report_labeler
 from app.bot.handlers.cancel_record import cancel_record_labeler
 from app.bot.handlers.confirmation import confirm_labeler
+from app.bot.handlers.discipline import discipline_labeler
 from app.bot.utils.scheduler import start_scheduler
 from app.db.base import init_db
 
@@ -35,6 +36,7 @@ async def main():
     bot.on.load(report_labeler)
     bot.on.load(cancel_record_labeler)
     bot.on.load(confirm_labeler)
+    bot.on.load(discipline_labeler)
 
     start_scheduler(bot)
 

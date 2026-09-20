@@ -24,6 +24,9 @@ class Resident
     public $language;
     public $notify_unconfirmed = true;
     public $is_banned = false;
+    public $score = 100;
+    public $confirm_streak = 0;
+    public $miss_streak = 0;
 
     // Дополнительные поля из JOIN
     public $dormitory_name;
@@ -64,6 +67,9 @@ class Resident
                 $this->language            = $data['language'] ?? 'RU';
                 $this->notify_unconfirmed  = isset($data['notify_unconfirmed']) ? (bool)$data['notify_unconfirmed'] : true;
                 $this->is_banned           = isset($data['is_banned']) ? (bool)$data['is_banned'] : false;
+                $this->score               = isset($data['score']) ? (int)$data['score'] : 100;
+                $this->confirm_streak      = isset($data['confirm_streak']) ? (int)$data['confirm_streak'] : 0;
+                $this->miss_streak         = isset($data['miss_streak']) ? (int)$data['miss_streak'] : 0;
                 $this->dormitory_name      = $data['dormitory_name'] ?? ('Общежитие №' . $this->dormitory_id);
                 return true;
             }
@@ -235,6 +241,18 @@ class Resident
                 }
             }
 
+            if (!empty($filters['score_status'])) {
+                if ($filters['score_status'] === 'master') {
+                    $sql .= " AND r.score >= 140";
+                } elseif ($filters['score_status'] === 'good') {
+                    $sql .= " AND r.score >= 90 AND r.score < 140";
+                } elseif ($filters['score_status'] === 'warning') {
+                    $sql .= " AND r.score >= 50 AND r.score < 90";
+                } elseif ($filters['score_status'] === 'critical') {
+                    $sql .= " AND r.score < 50";
+                }
+            }
+
             $sql .= " ORDER BY d.number ASC, r.last_name, r.first_name";
 
             $stmt = $db->prepare($sql);
@@ -258,6 +276,9 @@ class Resident
                 $r->language            = $row['language'] ?? 'RU';
                 $r->notify_unconfirmed  = isset($row['notify_unconfirmed']) ? (bool)$row['notify_unconfirmed'] : true;
                 $r->is_banned           = isset($row['is_banned']) ? (bool)$row['is_banned'] : false;
+                $r->score               = isset($row['score']) ? (int)$row['score'] : 100;
+                $r->confirm_streak      = isset($row['confirm_streak']) ? (int)$row['confirm_streak'] : 0;
+                $r->miss_streak         = isset($row['miss_streak']) ? (int)$row['miss_streak'] : 0;
                 $r->dormitory_name      = $row['dormitory_name'] ?? ('Общежитие №' . $r->dormitory_id);
                 $residents[]            = $r;
             }
@@ -266,6 +287,49 @@ class Resident
         } catch (PDOException $e) {
             error_log("Resident getAll error: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Ручная корректировка баллов администратором
+     */
+    public static function adjustScore(PDO $db, $residentId, $delta, $reason, $details = null)
+    {
+        try {
+            $stmt = $db->prepare("SELECT score, is_banned FROM residents WHERE id = ? FOR UPDATE");
+            $stmt->execute([(int)$residentId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                return false;
+            }
+
+            $currentScore = (int)$row['score'];
+            $newScore = max(0, min(200, $currentScore + (int)$delta));
+            $isBanned = $row['is_banned'];
+
+            if ($newScore <= 0) {
+                $isBanned = true;
+            }
+
+            $upd = $db->prepare("UPDATE residents SET score = ?, is_banned = ? WHERE id = ?");
+            $upd->execute([$newScore, $isBanned ? 1 : 0, (int)$residentId]);
+
+            $log = $db->prepare("
+                INSERT INTO resident_score_logs (resident_id, delta, score_after, reason, details)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $log->execute([
+                (int)$residentId,
+                (int)$delta,
+                $newScore,
+                $reason ?: 'ADMIN_ADJUSTMENT',
+                $details ?: 'Ручная корректировка администратором'
+            ]);
+
+            return true;
+        } catch (PDOException $e) {
+            error_log("Resident adjustScore error: " . $e->getMessage());
+            return false;
         }
     }
 }

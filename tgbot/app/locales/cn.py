@@ -99,6 +99,16 @@ CNtexts = {
         "reply_btn_my_records": "📋 我的预约",
         "reply_btn_settings": "⚙️ 设置",
         "reply_btn_start": "🚀 开始",
-        "quick_access_menu_hint": "底部快捷菜单已激活 ⬇️"
+        "quick_access_menu_hint": "底部快捷菜单已激活 ⬇️",
+
+        # --- 纪律与信用积分 ---
+        "discipline_rating_btn": "⭐️ 我的积分",
+        "discipline_confirm_bonus": "🎉 纪律积分 <b>+{delta}</b> 分！（连击：🔥 {streak}，总分：{score}）",
+        "discipline_decline_reward": "👍 及时取消获得 <b>+{delta}</b> 分（名额已释放）。当前积分：{score}",
+        "discipline_early_cancel_reward": "👍 提前取消获得 <b>+{delta}</b> 积分！当前积分：{score}",
+        "discipline_autocancel_penalty": "⚠️ 未取消且逾期未确认，<b>扣除 {delta} 积分</b>！当前积分：{score}。",
+        "discipline_banned_alert": "🚫 <b>注意：</b>您的积分已降至 0 分，预约功能已被锁定，请联系宿舍管理员。",
+        "discipline_profile_title": "⭐️ <b>纪律与信用积分</b>\n\n👤 <b>住户：</b> {name}\n🏆 <b>等级：</b> {badge} {rank}\n📊 <b>积分：</b> {score} / 200\n🔥 <b>准时连击：</b> {confirm_streak}\n⚠️ <b>违约连击：</b> {miss_streak}\n\n📋 <b>规则：</b>\n• 准时确认：+5 分（连击奖励最高 +12）\n• 提前取消：+2 分\n• 确认期放弃：+1 分\n• 违约逾期：-15..-40 分\n\n🕒 <b>近期记录：</b>\n{history}",
+        "discipline_no_history": "暂无积分变动记录。"
     }
 }

@@ -19,4 +19,7 @@ class Resident(Base):
     language: Mapped[str] = mapped_column(String, default='RU', nullable=False)
     notify_unconfirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    score: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    confirm_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    miss_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 

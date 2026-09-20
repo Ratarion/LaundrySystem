@@ -54,9 +54,26 @@ async def process_confirm(callback: CallbackQuery, state: FSMContext = None):
 
     # Успешное подтверждение
     await set_booking_status(booking_id, "Подтверждено")
+
+    confirm_msg = t.get("booking_confirmed", "✅ Запись подтверждена! Ждем вас.")
+    try:
+        from app.services.discipline_service import apply_discipline_event, EVENT_CONFIRM_ON_TIME
+        disc_res = await apply_discipline_event(booking.inidresidents, booking_id, EVENT_CONFIRM_ON_TIME)
+        if disc_res:
+            bonus_text = t.get("discipline_confirm_bonus", "").format(
+                delta=disc_res["delta"],
+                streak=disc_res["confirm_streak"],
+                score=disc_res["new_score"]
+            )
+            if bonus_text:
+                confirm_msg = f"{confirm_msg}\n\n{bonus_text}"
+    except Exception as e:
+        logging.error(f"Error applying discipline for booking {booking_id}: {e}")
+
     await callback.message.edit_text(
-        t.get("booking_confirmed", "✅ Запись подтверждена! Ждем вас."),
-        reply_markup=get_confirmed_keyboard(booking_id, lang)
+        confirm_msg,
+        reply_markup=get_confirmed_keyboard(booking_id, lang),
+        parse_mode="HTML"
     )
     await callback.answer()
 
@@ -111,9 +128,24 @@ async def process_decline(callback: CallbackQuery, bot: Bot, state: FSMContext =
 
     if success:
         await callback.answer(t.get("booking_declined", "Запись отменена"), show_alert=True)
+        decline_msg = t.get("booking_declined", "❌ Вы отменили запись. Слот освобожден для других жильцов.")
+        try:
+            from app.services.discipline_service import apply_discipline_event, EVENT_DECLINE_ON_CONFIRM
+            disc_res = await apply_discipline_event(booking.inidresidents, booking_id, EVENT_DECLINE_ON_CONFIRM)
+            if disc_res:
+                reward_text = t.get("discipline_decline_reward", "").format(
+                    delta=disc_res["delta"],
+                    score=disc_res["new_score"]
+                )
+                if reward_text:
+                    decline_msg = f"{decline_msg}\n\n{reward_text}"
+        except Exception as e:
+            logging.error(f"Error applying discipline on decline for booking {booking_id}: {e}")
+
         await callback.message.edit_text(
-            t.get("booking_declined", "❌ Вы отменили запись. Слот освобожден для других жильцов."),
-            reply_markup=get_declined_keyboard(lang)
+            decline_msg,
+            reply_markup=get_declined_keyboard(lang),
+            parse_mode="HTML"
         )
         asyncio.create_task(
             broadcast_slot_freed(bot, booking_data, exclude_tg_id=callback.from_user.id)

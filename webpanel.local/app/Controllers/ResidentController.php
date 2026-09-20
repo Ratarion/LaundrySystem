@@ -97,6 +97,27 @@ class ResidentController extends BaseController
                 }
             }
 
+            if (isset($_POST['adjust_score'])) {
+                $residentId = (int)$_POST['resident_id'];
+                $delta      = (int)($_POST['score_delta'] ?? 0);
+                $reason     = trim($_POST['score_reason'] ?? 'ADMIN_ADJUSTMENT');
+                $details    = trim($_POST['score_details'] ?? '');
+
+                $resident = new Resident($this->pdo);
+                if ($resident->load($residentId)) {
+                    if ($sessionDormId !== null && (int)$resident->dormitory_id !== $sessionDormId) {
+                        $this->redirect("/residents?error=" . urlencode('Вы можете изменять баллы только жителей своего общежития!'));
+                    }
+                    if (Resident::adjustScore($this->pdo, $residentId, $delta, $reason, $details)) {
+                        $sign = $delta > 0 ? "+{$delta}" : "{$delta}";
+                        $this->log->info('Ручная корректировка баллов', ['resident_id' => $residentId, 'delta' => $delta, 'admin' => $_SESSION['username'] ?? 'admin']);
+                        $successMessage = "Баллы жителя успешно изменены ({$sign})!";
+                    } else {
+                        $errorMessage = 'Ошибка при изменении баллов жителя.';
+                    }
+                }
+            }
+
             if (isset($_POST['delete_id'])) {
                 $resident = new Resident($this->pdo);
                 $resident->load((int)$_POST['delete_id']);
@@ -115,6 +136,15 @@ class ResidentController extends BaseController
             }
         }
 
+        // AJAX запрос на получение истории баллов жителя
+        if (isset($_GET['score_history'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $residentId = (int)$_GET['score_history'];
+            $logs = \Models\ScoreLog::getByResident($this->pdo, $residentId, 30);
+            echo json_encode(['success' => true, 'logs' => $logs], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $editResident = null;
         if (isset($_GET['edit'])) {
             $editResidentObj = new Resident($this->pdo);
@@ -131,7 +161,10 @@ class ResidentController extends BaseController
                     'inidroom'           => $editResidentObj->inidroom,
                     'idcards'            => $editResidentObj->idcards,
                     'notify_unconfirmed' => $editResidentObj->notify_unconfirmed,
-                    'is_banned'          => $editResidentObj->is_banned
+                    'is_banned'          => $editResidentObj->is_banned,
+                    'score'              => $editResidentObj->score,
+                    'confirm_streak'     => $editResidentObj->confirm_streak,
+                    'miss_streak'        => $editResidentObj->miss_streak
                 ];
             }
         }
@@ -144,6 +177,7 @@ class ResidentController extends BaseController
         $bot_status    = trim($_GET['bot_status'] ?? '');
         $notify_status = isset($_GET['notify_status']) ? trim($_GET['notify_status']) : '';
         $ban_status    = trim($_GET['ban_status'] ?? '');
+        $score_status  = trim($_GET['score_status'] ?? '');
 
         $residents    = Resident::getAll($this->pdo, $dormitory_id, [
             'fio'           => $fio,
@@ -152,6 +186,7 @@ class ResidentController extends BaseController
             'bot_status'    => $bot_status,
             'notify_status' => $notify_status,
             'ban_status'    => $ban_status,
+            'score_status'  => $score_status,
         ]);
         $dormitories  = Dormitory::getAll($this->pdo);
 
@@ -165,6 +200,7 @@ class ResidentController extends BaseController
             'bot_status'    => $bot_status,
             'notify_status' => $notify_status,
             'ban_status'    => $ban_status,
+            'score_status'  => $score_status,
             'sessionDormId' => $sessionDormId,
             'editResident'  => $editResident,
             'roleName'      => $roleName,

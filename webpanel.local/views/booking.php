@@ -221,7 +221,29 @@
                                 <?= e(!empty($b['dormitory_name']) ? $b['dormitory_name'] : ('Общежитие №' . ($b['dormitory_id'] ?? '1'))) ?>
                             </span>
                         </td>
-                        <td style="font-weight: 600;"><?= e(trim($b['last_name'] . ' ' . $b['first_name'] . ' ' . ($b['patronymic'] ?? ''))) ?></td>
+                        <td style="font-weight: 600;">
+                            <div><?= e(trim($b['last_name'] . ' ' . $b['first_name'] . ' ' . ($b['patronymic'] ?? ''))) ?></div>
+                            <?php if (isset($b['score']) && $b['score'] !== null): 
+                                $rScore = (int)$b['score'];
+                                $rStreak = !empty($b['confirm_streak']) ? (int)$b['confirm_streak'] : 0;
+                                $scoreColor = '#10b981'; $scoreBg = '#ecfdf5'; $rankIcon = 'fa-circle-check';
+                                if ($rScore >= 140) { $scoreColor = '#6366f1'; $scoreBg = '#e0e7ff'; $rankIcon = 'fa-gem'; }
+                                elseif ($rScore < 20) { $scoreColor = '#ef4444'; $scoreBg = '#fee2e2'; $rankIcon = 'fa-ban'; }
+                                elseif ($rScore < 50) { $scoreColor = '#f97316'; $scoreBg = '#ffedd5'; $rankIcon = 'fa-triangle-exclamation'; }
+                                elseif ($rScore < 90) { $scoreColor = '#f59e0b'; $scoreBg = '#fef3c7'; $rankIcon = 'fa-circle-exclamation'; }
+                            ?>
+                                <div style="margin-top: 4px; display: inline-flex; align-items: center; gap: 5px;">
+                                    <span title="Дисциплина: <?= $rScore ?> баллов" style="font-size: 11px; padding: 2px 7px; border-radius: 9999px; background: <?= $scoreBg ?>; color: <?= $scoreColor ?>; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="fa-solid <?= $rankIcon ?>" style="font-size: 10px;"></i> <?= $rScore ?> б.
+                                    </span>
+                                    <?php if ($rStreak >= 2): ?>
+                                        <span title="Серия подтверждений подряд: <?= $rStreak ?>" style="font-size: 11px; padding: 2px 6px; border-radius: 9999px; background: #fff1f2; color: #e11d48; font-weight: 700;">
+                                            🔥 <?= $rStreak ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
                         <td style="text-align: center; font-weight: 600;"><?= e($b['inidroom']) ?></td>
                         <td><?= e($b['type_machine']) ?> #<?= e($b['number_machine']) ?></td>
                         <td><?= date('d.m.Y H:i', strtotime($b['start_time'])) ?></td>

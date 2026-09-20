@@ -90,9 +90,20 @@ def get_section_keyboard(lang: str) -> str:
         .row()
         .add(Callback(t["cancel_record"], {"cmd": "remove_records"}), color=KeyboardButtonColor.SECONDARY)
         .row()
+        .add(Callback(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), {"cmd": "show_rating"}), color=KeyboardButtonColor.POSITIVE)
+        .row()
         .add(OpenLink("http://webpanel.beget.tech", t.get("web_panel", "🌐 Перейти на сайт")))
         .row()
         .add(Callback(t.get("settings", "⚙️ Настройки"), {"cmd": "settings_menu"}), color=KeyboardButtonColor.SECONDARY)
+    )
+    return kb.get_json()
+
+
+def get_rating_keyboard(lang: str) -> str:
+    t = _t(lang)
+    kb = (
+        Keyboard(inline=True)
+        .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 

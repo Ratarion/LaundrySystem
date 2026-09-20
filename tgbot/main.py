@@ -24,6 +24,7 @@ from app.bot.handlers.records import records_router
 from app.bot.handlers.report import report_router
 from app.bot.scheduler import start_scheduler
 from app.bot.handlers.confirmation import confirm_router
+from app.bot.handlers.discipline import discipline_router
 
 from app.db.base import init_db
 
@@ -38,6 +39,7 @@ async def setup_bot_commands(bot_instance: Bot):
         BotCommand(command="start", description="Запустить бота / главное меню"),
         BotCommand(command="menu", description="Главное меню"),
         BotCommand(command="records", description="Мои записи"),
+        BotCommand(command="rating", description="Рейтинг дисциплины и баллы"),
         BotCommand(command="settings", description="Настройки"),
     ]
     try:
@@ -55,6 +57,7 @@ async def main():
     dp.include_router(report_router)
     dp.include_router(cancel_record_router)
     dp.include_router(confirm_router)
+    dp.include_router(discipline_router)
 
     start_scheduler(bot)
 

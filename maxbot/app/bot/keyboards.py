@@ -65,8 +65,16 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     kb.row(CallbackButton(t["record_laundry"], _payload("record"), intent="positive"))
     kb.row(CallbackButton(t["show_records"], _payload("show_records"), intent="default"))
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
+    kb.row(CallbackButton(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), _payload("show_rating"), intent="positive"))
     kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
     kb.row(CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"))
+    return kb
+
+
+def get_rating_keyboard(lang: str) -> KeyboardBuilder:
+    t = _t(lang)
+    kb = KeyboardBuilder()
+    kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
 
 

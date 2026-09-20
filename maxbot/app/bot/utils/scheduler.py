@@ -121,6 +121,14 @@ async def check_confirmations(bot):
         if success:
             logging.info(f"[MaxBot] Автоматически отменена неподтверждённая бронь #{b.id}")
 
+            disc_res = None
+            if user:
+                try:
+                    from app.services.discipline_service import apply_discipline_event, EVENT_AUTOCANCEL_MISSED
+                    disc_res = await apply_discipline_event(user.id, b.id, EVENT_AUTOCANCEL_MISSED)
+                except Exception as e:
+                    logging.error(f"[MaxBot] Ошибка применения штрафа при автоотмене: {e}")
+
             if max_id:
                 try:
                     cancel_notice = t.get(
@@ -130,6 +138,18 @@ async def check_confirmations(bot):
                         date=booking_data["date_str"],
                         time=f"{booking_data['start_time_str']} - {booking_data['end_time_str']}"
                     )
+                    if disc_res:
+                        penalty_text = t.get("discipline_autocancel_penalty", "").format(
+                            delta=disc_res["delta"],
+                            score=disc_res["new_score"]
+                        )
+                        if penalty_text:
+                            cancel_notice = f"{cancel_notice}\n\n{penalty_text}"
+                        if disc_res.get("is_banned"):
+                            banned_alert = t.get("discipline_banned_alert", "")
+                            if banned_alert:
+                                cancel_notice = f"{cancel_notice}\n\n{banned_alert}"
+
                     await bot.send_message(user_id=max_id, text=cancel_notice)
                 except Exception as e:
                     logging.warning(f"[MaxBot] Не удалось уведомить пользователя {max_id} об автоотмене: {e}")

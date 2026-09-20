@@ -160,6 +160,15 @@ async def check_confirmations(bot: Bot):
                 "machine_num": getattr(db_b.machine, "number_machine", "") if getattr(db_b, "machine", None) else ""
             }
 
+            # Применяем штраф за пропуск подтверждения
+            disc_res = None
+            if user:
+                try:
+                    from app.services.discipline_service import apply_discipline_event, EVENT_AUTOCANCEL_MISSED
+                    disc_res = await apply_discipline_event(user.id, db_b.id, EVENT_AUTOCANCEL_MISSED)
+                except Exception as e:
+                    logging.error(f"Failed to apply penalty for autocancel on booking {db_b.id}: {e}")
+
             if user and getattr(user, "vk_id", None):
                 lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
                 if lang not in ALL_TEXTS:
@@ -185,6 +194,19 @@ async def check_confirmations(bot: Bot):
                     machine_type=m_type,
                     machine_num=booking_data["machine_num"],
                 ))
+
+                if disc_res:
+                    penalty_text = strip_html(t.get("discipline_autocancel_penalty", "").format(
+                        delta=disc_res["delta"],
+                        score=disc_res["new_score"]
+                    ))
+                    if penalty_text:
+                        autocancel_text = f"{autocancel_text}\n\n{penalty_text}"
+                    if disc_res.get("is_banned"):
+                        banned_alert = strip_html(t.get("discipline_banned_alert", ""))
+                        if banned_alert:
+                            autocancel_text = f"{autocancel_text}\n\n{banned_alert}"
+
                 try:
                     await bot.api.messages.send(peer_id=user.vk_id, message=autocancel_text, random_id=0)
                 except Exception as e:
