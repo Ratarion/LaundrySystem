@@ -349,9 +349,9 @@ class HallOfFameController extends BaseController
                 'title'    => 'Telegram',
                 'url'      => $url,
                 'icon'     => 'fa-brands fa-telegram',
-                'color'    => '#229ED9',
-                'bg'       => 'rgba(34, 158, 217, 0.15)',
-                'border'   => 'rgba(34, 158, 217, 0.4)',
+                'color'    => '#0284c7',
+                'bg'       => '#f0f9ff',
+                'border'   => '#bae6fd',
                 'badge'    => 'Telegram'
             ];
         }
@@ -364,9 +364,9 @@ class HallOfFameController extends BaseController
                 'title'    => 'ВКонтакте',
                 'url'      => "https://vk.com/id{$vkVal}",
                 'icon'     => 'fa-brands fa-vk',
-                'color'    => '#0077FF',
-                'bg'       => 'rgba(0, 119, 255, 0.15)',
-                'border'   => 'rgba(0, 119, 255, 0.4)',
+                'color'    => '#2563eb',
+                'bg'       => '#eff6ff',
+                'border'   => '#bfdbfe',
                 'badge'    => 'ВКонтакте'
             ];
         }
@@ -379,9 +379,9 @@ class HallOfFameController extends BaseController
                 'title'    => 'MAX Мессенджер',
                 'url'      => "https://max.ru",
                 'icon'     => 'fa-solid fa-comments',
-                'color'    => '#8b5cf6',
-                'bg'       => 'rgba(139, 92, 246, 0.15)',
-                'border'   => 'rgba(139, 92, 246, 0.4)',
+                'color'    => '#c2410c',
+                'bg'       => '#fff7ed',
+                'border'   => '#fed7aa',
                 'badge'    => "MAX (ID: {$maxVal})"
             ];
         }
