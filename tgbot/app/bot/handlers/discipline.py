@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 from aiogram.filters import Command
 
 @discipline_router.message(Command("rating"))
-@discipline_router.message(F.text.in_({"⭐️ Мой рейтинг", "Мой рейтинг", "Рейтинг", "⭐️ My Rating", "My Rating", "⭐️ 我的积分", "我的积分"}))
-@discipline_router.callback_query(F.data == "show_rating")
+@discipline_router.message(F.text.func(lambda text: bool(text and ("рейтинг" in text.lower() or "rating" in text.lower() or "积分" in text))))
+@discipline_router.callback_query(F.data.in_({"show_rating", "discipline_rating", "rating"}))
 async def show_discipline_rating(event: CallbackQuery | Message, state: FSMContext = None):
     is_callback = isinstance(event, CallbackQuery)
     user_id = event.from_user.id
@@ -37,7 +37,10 @@ async def show_discipline_rating(event: CallbackQuery | Message, state: FSMConte
         card = None
 
     if not card:
-        await callback.answer("Ошибка получения данных рейтинга", show_alert=True)
+        if is_callback:
+            await event.answer("Ошибка получения данных рейтинга", show_alert=True)
+        else:
+            await event.answer("Ошибка получения данных рейтинга")
         return
 
     rank_dict = card.get("rank", {})
