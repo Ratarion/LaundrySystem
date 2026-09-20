@@ -57,7 +57,7 @@ async def show_discipline_rating_event(event: MessageEvent):
         history=history_text
     ))
 
-    await event.edit_message(profile_text, keyboard=get_rating_keyboard(lang))
+    await event.edit_message(profile_text, keyboard=get_rating_keyboard(lang, user.id))
 
 
 @discipline_labeler.message(text=["⭐️ Мой рейтинг", "Мой рейтинг", "Рейтинг", "/rating", "⭐️ My Rating", "My Rating", "⭐️ 我的积分", "我的积分"])
@@ -104,4 +104,4 @@ async def show_discipline_rating_msg(message: Message):
         history=history_text
     ))
 
-    await message.answer(profile_text, keyboard=get_rating_keyboard(lang))
+    await message.answer(profile_text, keyboard=get_rating_keyboard(lang, user.id))

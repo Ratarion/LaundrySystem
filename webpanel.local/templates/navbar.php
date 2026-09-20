@@ -47,6 +47,12 @@ $userDormId = $_SESSION['dormitory_id'] ?? null;
         </li>
 
         <li>
+            <a href="/hall-of-fame" class="menu-link <?= strpos($current_uri, '/hall-of-fame') !== false ? 'active' : '' ?>" title="Зал славы">
+                <i class="fa-solid fa-trophy" style="color: #fbbf24;"></i> <span>Зал славы</span>
+            </a>
+        </li>
+
+        <li>
             <a href="/residents" class="menu-link <?= strpos($current_uri, '/residents') !== false ? 'active' : '' ?>" title="Пользователи">
                 <i class="fa-solid fa-user-graduate"></i> <span>Пользователи</span>
             </a>

@@ -66,7 +66,7 @@ async def show_discipline_rating_cb(cb: Callback, cursor: fsm.FSMCursor):
         history=history_text
     ))
 
-    await cb.answer(text=profile_text, keyboard=get_rating_keyboard(lang))
+    await cb.answer(text=profile_text, keyboard=get_rating_keyboard(lang, user.id))
 
 
 @discipline_router.on_message(lambda msg: (msg.text or "").strip() in {
@@ -115,4 +115,4 @@ async def show_discipline_rating_msg(message: Message, cursor: fsm.FSMCursor):
         history=history_text
     ))
 
-    await message.reply(text=profile_text, keyboard=get_rating_keyboard(lang))
+    await message.reply(text=profile_text, keyboard=get_rating_keyboard(lang, user.id))

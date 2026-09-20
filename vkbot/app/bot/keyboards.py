@@ -99,10 +99,13 @@ def get_section_keyboard(lang: str) -> str:
     return kb.get_json()
 
 
-def get_rating_keyboard(lang: str) -> str:
+def get_rating_keyboard(lang: str, resident_id: int | None = None) -> str:
     t = _t(lang)
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
     kb = (
         Keyboard(inline=True)
+        .add(OpenLink(url, t.get("hall_of_fame_btn", "🏆 Зал славы")))
+        .row()
         .add(Callback(t["back"], {"cmd": "back_to_sections"}), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()

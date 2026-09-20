@@ -19,16 +19,22 @@
     <div class="page-header">
         <h1 class="page-title"><i class="fa-solid fa-calendar-days"></i> Бронирования (<?= e($roleName) ?>)</h1>
         
-        <?php if (!$isLoggedIn): ?>
-            <a href="/login" class="btn btn-primary" style="font-size: 15px; padding: 10px 24px;">
-                <i class="fa-solid fa-key"></i> Вход в админ-панель
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <a href="/hall-of-fame" class="btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; font-size: 14px; padding: 9px 18px; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-trophy"></i> Зал славы
             </a>
-        <?php else: ?>
-            <div class="user-badge">
-                <i class="fa-solid fa-user"></i> <span class="user-badge-name"><?= e($_SESSION['username']) ?></span>
-                <small>(<?= e($roleName) ?>)</small>
-            </div>
-        <?php endif; ?>
+
+            <?php if (!$isLoggedIn): ?>
+                <a href="/login" class="btn btn-primary" style="font-size: 14px; padding: 9px 20px;">
+                    <i class="fa-solid fa-key"></i> Вход в админ-панель
+                </a>
+            <?php else: ?>
+                <div class="user-badge">
+                    <i class="fa-solid fa-user"></i> <span class="user-badge-name"><?= e($_SESSION['username']) ?></span>
+                    <small>(<?= e($roleName) ?>)</small>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- ФОРМА ФИЛЬТРОВ -->

@@ -71,9 +71,11 @@ def get_section_keyboard(lang: str) -> KeyboardBuilder:
     return kb
 
 
-def get_rating_keyboard(lang: str) -> KeyboardBuilder:
+def get_rating_keyboard(lang: str, resident_id: int | None = None) -> KeyboardBuilder:
     t = _t(lang)
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
     kb = KeyboardBuilder()
+    kb.row(LinkButton(t.get("hall_of_fame_btn", "🏆 Зал славы"), url))
     kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
 

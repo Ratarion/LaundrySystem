@@ -109,6 +109,13 @@ switch ($uri) {
         $controller->index();
         break;
 
+    case '/hall-of-fame':
+    case '/hall-of-fame.php':
+    case '/leaderboard':
+        $controller = new App\Controllers\HallOfFameController($pdo);
+        $controller->index();
+        break;
+
     case '/login':
     case '/login.php':
         $controller = new App\Controllers\AuthController($pdo);

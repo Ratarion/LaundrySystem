@@ -82,10 +82,12 @@ def get_section_keyboard(lang: str) -> InlineKeyboardMarkup:
         ]
     )
 
-def get_rating_keyboard(lang: str) -> InlineKeyboardMarkup:
+def get_rating_keyboard(lang: str, resident_id: int | None = None) -> InlineKeyboardMarkup:
     t = ALL_TEXTS.get(lang, ALL_TEXTS["RU"])
+    url = f"http://webpanel.beget.tech/hall-of-fame?me={resident_id}" if resident_id else "http://webpanel.beget.tech/hall-of-fame"
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            [InlineKeyboardButton(text=t.get("hall_of_fame_btn", "🏆 Зал славы"), url=url)],
             [InlineKeyboardButton(text=t["back"], callback_data="back_to_sections")]
         ]
     )

@@ -72,13 +72,13 @@ async def show_discipline_rating(event: CallbackQuery | Message, state: FSMConte
     if is_callback:
         await event.message.edit_text(
             profile_text,
-            reply_markup=get_rating_keyboard(lang),
+            reply_markup=get_rating_keyboard(lang, user.id),
             parse_mode="HTML"
         )
         await event.answer()
     else:
         await event.answer(
             profile_text,
-            reply_markup=get_rating_keyboard(lang),
+            reply_markup=get_rating_keyboard(lang, user.id),
             parse_mode="HTML"
         )
