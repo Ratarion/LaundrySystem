@@ -3,8 +3,8 @@ RUtexts = {
     "RU": {
         "hello_user": "Здравствуйте, {name}! Выберите действие:",
         "welcome_lang_choice": "Здравствуйте, выберите язык\nHello, choose a language",
-        "record_laundry": "Записаться на стирку",
-        "show_records": "Показать мои записи",
+        "record_laundry": "Запись",
+        "show_records": "Просмотр",
         "report_sent": "Сообщение отправлено",
         "report_prompt": "Укажите номер и тип машинки и опишите проблему:",
         "cancel_record": "Отменить запись",
@@ -128,6 +128,8 @@ RUtexts = {
             "ℹ️ Информация о сервисе «Стирка КузГТУ»\n\n"
             "🧺 Официальное сообщество:\n"
             "ВКонтакте: Стирка КузГТУ (https://vk.ru/kuzstu_stirka)\n\n"
+            "🌐 Сайт системы:\n"
+            "http://webpanel.beget.tech\n\n"
             "👨‍💻 Контакты разработчиков:\n"
             "• Стас Якушев:\n"
             "  Telegram: @JokMiler (https://t.me/JokMiler)\n"

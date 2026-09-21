@@ -57,12 +57,15 @@ def get_lang_keyboard(is_settings: bool = False, lang: str = "RU") -> KeyboardBu
 def get_section_keyboard(lang: str) -> KeyboardBuilder:
     t = _t(lang)
     kb = KeyboardBuilder()
-    kb.row(CallbackButton(t["record_laundry"], _payload("record"), intent="positive"))
-    kb.row(CallbackButton(t["show_records"], _payload("show_records"), intent="default"))
+    kb.row(
+        CallbackButton(t["record_laundry"], _payload("record"), intent="positive"),
+        CallbackButton(t["show_records"], _payload("show_records"), intent="default")
+    )
     kb.row(CallbackButton(t["cancel_record"], _payload("remove_records"), intent="default"))
-    kb.row(CallbackButton(t.get("info_btn", "ℹ️ Информация"), _payload("info_menu"), intent="positive"))
-    kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
-    kb.row(CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"))
+    kb.row(
+        CallbackButton(t.get("settings", "⚙️ Настройки"), _payload("settings_menu"), intent="default"),
+        CallbackButton(t.get("info_btn", "ℹ️ Информация"), _payload("info_menu"), intent="positive")
+    )
     return kb
 
 
@@ -72,6 +75,7 @@ def get_info_keyboard(lang: str, resident_id: int | None = None) -> KeyboardBuil
     kb = KeyboardBuilder()
     kb.row(CallbackButton(t.get("discipline_rating_btn", "⭐️ Мой рейтинг"), _payload("show_rating"), intent="positive"))
     kb.row(LinkButton(t.get("hall_of_fame_btn", "🏆 Зал славы"), url))
+    kb.row(LinkButton(t.get("web_panel", "🌐 Перейти на сайт"), "http://webpanel.beget.tech"))
     kb.row(LinkButton(t.get("vk_community_btn", "🧺 Стирка КузГТУ (ВК)"), "https://vk.ru/kuzstu_stirka"))
     kb.row(CallbackButton(t["back"], _payload("back_to_sections"), intent="default"))
     return kb
