@@ -199,6 +199,40 @@ class BookingController extends BaseController
             }
         }
 
+        // Определение активного пресета быстрого выбора даты
+        $today     = date('Y-m-d');
+        $tomorrow  = date('Y-m-d', strtotime('+1 day'));
+        $week      = date('Y-m-d', strtotime('+6 days'));
+        $monthFrom = date('Y-m-d', strtotime('-7 days'));
+        $monthTo   = date('Y-m-d', strtotime('+23 days'));
+
+        $quick_range = trim($_REQUEST['quick_range'] ?? '');
+        if ($quick_range !== '' && in_array($quick_range, ['today_tomorrow', 'today', 'tomorrow', 'week', 'month'], true)) {
+            $matches = false;
+            if ($quick_range === 'today_tomorrow' && $date_from === $today && $date_to === $tomorrow) $matches = true;
+            elseif ($quick_range === 'today' && $date_from === $today && $date_to === $today) $matches = true;
+            elseif ($quick_range === 'tomorrow' && $date_from === $tomorrow && $date_to === $tomorrow) $matches = true;
+            elseif ($quick_range === 'week' && $date_from === $today && $date_to === $week) $matches = true;
+            elseif ($quick_range === 'month' && $date_from === $monthFrom && $date_to === $monthTo) $matches = true;
+            if (!$matches) {
+                $quick_range = '';
+            }
+        } else {
+            if ($date_from === $today && $date_to === $tomorrow) {
+                $quick_range = 'today_tomorrow';
+            } elseif ($date_from === $today && $date_to === $today) {
+                $quick_range = 'today';
+            } elseif ($date_from === $tomorrow && $date_to === $tomorrow) {
+                $quick_range = 'tomorrow';
+            } elseif ($date_from === $today && $date_to === $week) {
+                $quick_range = 'week';
+            } elseif ($date_from === $monthFrom && $date_to === $monthTo) {
+                $quick_range = 'month';
+            } else {
+                $quick_range = '';
+            }
+        }
+
         $bookings    = Booking::getAll($this->pdo, $date_from, $date_to, $status, $dormitory_id, $machine_id, $fio);
         $dormitories = Dormitory::getAll($this->pdo);
         $machines    = Machine::getAll($this->pdo, $dormitory_id ?: null);
@@ -216,6 +250,7 @@ class BookingController extends BaseController
             'single_date'   => $single_date,
             'date_from'     => $date_from,
             'date_to'       => $date_to,
+            'quick_range'   => $quick_range,
             'status'        => $status,
             'fio'           => $fio,
             'success'       => $successMessage,

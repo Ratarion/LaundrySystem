@@ -20,11 +20,10 @@
         <h1 class="page-title"><i class="fa-solid fa-calendar-days"></i> Бронирования (<?= e($roleName) ?>)</h1>
         
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <a href="/hall-of-fame" class="btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; font-size: 14px; padding: 9px 18px; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-trophy"></i> Зал славы
-            </a>
-
             <?php if (!$isLoggedIn): ?>
+                <a href="/hall-of-fame" class="btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; font-size: 14px; padding: 9px 18px; font-weight: 700; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-trophy"></i> Зал славы
+                </a>
                 <a href="/login" class="btn btn-primary" style="font-size: 14px; padding: 9px 20px;">
                     <i class="fa-solid fa-key"></i> Вход в админ-панель
                 </a>
@@ -40,6 +39,7 @@
     <!-- ФОРМА ФИЛЬТРОВ -->
     <div class="glass-card">
         <form method="GET" action="/booking" class="form-grid" id="bookingFilterForm">
+            <input type="hidden" name="quick_range" id="quickRangeInput" value="<?= e($quick_range ?? '') ?>">
             <div class="form-group">
                 <label class="form-label"><i class="fa-solid fa-building"></i> Общежитие</label>
                 <?php if (!empty($sessionDormId)): ?>
@@ -110,14 +110,14 @@
             </div>
         </form>
 
-        <!-- Быстрый выбор даты для жителей -->
+        <!-- Быстрый выбор даты -->
         <div style="margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px;">
             <span style="font-size: 13px; color: #64748b; font-weight: 500;"><i class="fa-regular fa-clock"></i> Быстрый выбор:</span>
-            <button type="button" class="btn btn-sm btn-primary" onclick="setDateRange('today_tomorrow')">Сегодня и завтра</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('today')">Сегодня</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('tomorrow')">Завтра</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('week')">Ближайшая неделя</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="setDateRange('month')">Месяц</button>
+            <button type="button" data-range="today_tomorrow" class="btn btn-sm quick-date-btn <?= (($quick_range ?? '') === 'today_tomorrow') ? 'btn-primary' : 'btn-secondary' ?>" onclick="setDateRange('today_tomorrow')">Сегодня и завтра</button>
+            <button type="button" data-range="today" class="btn btn-sm quick-date-btn <?= (($quick_range ?? '') === 'today') ? 'btn-primary' : 'btn-secondary' ?>" onclick="setDateRange('today')">Сегодня</button>
+            <button type="button" data-range="tomorrow" class="btn btn-sm quick-date-btn <?= (($quick_range ?? '') === 'tomorrow') ? 'btn-primary' : 'btn-secondary' ?>" onclick="setDateRange('tomorrow')">Завтра</button>
+            <button type="button" data-range="week" class="btn btn-sm quick-date-btn <?= (($quick_range ?? '') === 'week') ? 'btn-primary' : 'btn-secondary' ?>" onclick="setDateRange('week')">Ближайшая неделя</button>
+            <button type="button" data-range="month" class="btn btn-sm quick-date-btn <?= (($quick_range ?? '') === 'month') ? 'btn-primary' : 'btn-secondary' ?>" onclick="setDateRange('month')">Месяц</button>
         </div>
     </div>
 
@@ -314,6 +314,21 @@ function setDateRange(type) {
     const toInput = document.getElementById('dateToInput');
     if (!fromInput || !toInput) return;
 
+    // Мгновенная визуальная подсветка активной кнопки
+    const quickRangeInput = document.getElementById('quickRangeInput');
+    if (quickRangeInput) {
+        quickRangeInput.value = type;
+    }
+    document.querySelectorAll('.quick-date-btn').forEach(btn => {
+        if (btn.getAttribute('data-range') === type) {
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+        } else {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        }
+    });
+
     const today = new Date();
     
     function fmt(d) {
@@ -374,5 +389,22 @@ function confirmSingleCancel(form) {
     return true;
 }
 
-document.addEventListener('DOMContentLoaded', filterMachinesByDormitory);
+document.addEventListener('DOMContentLoaded', function() {
+    filterMachinesByDormitory();
+
+    // Сброс активной подсветки быстрого выбора при ручном изменении дат
+    ['dateFromInput', 'dateToInput'].forEach(function(id) {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('change', function() {
+                const quickRangeInput = document.getElementById('quickRangeInput');
+                if (quickRangeInput) quickRangeInput.value = '';
+                document.querySelectorAll('.quick-date-btn').forEach(function(btn) {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-secondary');
+                });
+            });
+        }
+    });
+});
 </script>
