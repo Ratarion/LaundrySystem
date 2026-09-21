@@ -31,7 +31,7 @@ async def show_info_menu_cb(cb: Callback, cursor: fsm.FSMCursor):
     await cb.answer(text=info_text, keyboard=get_info_keyboard(lang, user.id if user else None))
 
 
-@discipline_router.on_message(lambda msg: (msg.text or "").strip() in {
+@discipline_router.on_message(lambda msg: (getattr(msg, "text", "") or "").strip() in {
     "ℹ️ Информация", "Информация", "/info", "Info", "ℹ️ Information", "Information", "ℹ️ 信息", "信息"
 })
 async def show_info_menu_msg(message: Message, cursor: fsm.FSMCursor):
@@ -89,7 +89,7 @@ async def show_discipline_rating_cb(cb: Callback, cursor: fsm.FSMCursor):
     await cb.answer(text=profile_text, keyboard=get_rating_keyboard(lang, user.id))
 
 
-@discipline_router.on_message(lambda msg: (msg.text or "").strip() in {
+@discipline_router.on_message(lambda msg: (getattr(msg, "text", "") or "").strip() in {
     "⭐️ Мой рейтинг", "Мой рейтинг", "Рейтинг", "/rating", "⭐️ My Rating", "My Rating", "⭐️ 我的积分", "我的积分"
 })
 async def show_discipline_rating_msg(message: Message, cursor: fsm.FSMCursor):

@@ -10,10 +10,13 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from app.repositories.laundry_repo import (
-    get_bookings_to_remind,
-    set_booking_status,
-    get_expired_unconfirmed_bookings,
-    cancel_booking
+    get_bookings_to_remind_tg,
+    mark_booking_reminded_tg,
+    get_expired_unconfirmed_bookings_to_cancel,
+    autocancel_booking,
+    get_autocanceled_to_notify_tg,
+    mark_autocanceled_notified_tg,
+    get_autocancel_penalty_info
 )
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
@@ -44,32 +47,82 @@ async def _safe_create_task(coro):
     return task
 
 
+def _format_autocancel_text(user, booking_data: dict, disc_res: dict = None) -> str:
+    lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
+    if lang not in ALL_TEXTS:
+        lang = "RU"
+    t = ALL_TEXTS[lang]
+
+    raw_type = booking_data.get("machine_type", "")
+    if raw_type == "Стиральная":
+        m_type = t.get("machine_type_wash", "Стиральная")
+    elif raw_type == "Сушильная":
+        m_type = t.get("machine_type_dry", "Сушильная")
+    else:
+        m_type = raw_type
+
+    time_range = f"{booking_data.get('start_time_str', '')} – {booking_data.get('end_time_str', '')}"
+    autocancel_text = t.get(
+        "booking_autocanceled",
+        "❌ Ваша запись на {date} ({time_range}) {machine_type} №{machine_num} "
+        "была отменена автоматически, так как вы не подтвердили её вовремя."
+    ).format(
+        date=booking_data.get("date_str", ""),
+        time_range=time_range,
+        machine_type=m_type,
+        machine_num=booking_data.get("machine_num", ""),
+    )
+
+    if disc_res:
+        penalty_text = t.get("discipline_autocancel_penalty", "").format(
+            delta=disc_res.get("delta", -15),
+            score=disc_res.get("new_score", 100)
+        )
+        if penalty_text:
+            autocancel_text = f"{autocancel_text}\n\n{penalty_text}"
+        if disc_res.get("is_banned"):
+            banned_alert = t.get("discipline_banned_alert", "")
+            if banned_alert:
+                autocancel_text = f"{autocancel_text}\n\n{banned_alert}"
+
+    return autocancel_text
+
+
+async def _send_autocancel_notice_tg(bot: Bot, user, booking_data: dict, disc_res: dict = None):
+    if not user or not getattr(user, "tg_id", None):
+        return
+    text = _format_autocancel_text(user, booking_data, disc_res)
+    try:
+        await bot.send_message(user.tg_id, text, parse_mode="HTML")
+    except Exception as e:
+        logging.error(f"Failed to notify {user.tg_id} about autocancel: {e}")
+
+
 async def check_confirmations(bot: Bot):
     now = get_kemerovo_now()
     logging.debug(f"check_confirmations run at {now.isoformat()}")
 
-    # --- ЭТАП 1: Рассылка запросов на подтверждение (за 1 час / 60 минут) ---
+    # --- ЭТАП 1: Рассылка запросов на подтверждение в TG (за 1 час / 60 минут) ---
     try:
-        bookings_to_remind = await get_bookings_to_remind(minutes_before=60, minutes_deadline=30)
+        bookings_to_remind = await get_bookings_to_remind_tg(minutes_before=60, minutes_deadline=30)
     except Exception as e:
-        logging.error(f"Failed to fetch bookings_to_remind: {e}")
+        logging.error(f"Failed to fetch bookings_to_remind_tg: {e}")
         bookings_to_remind = []
 
-    # ЗАГРУЖАЕМ каждый booking в своей сессии (чтобы он был persistent)
     async with async_session() as sess:
         for b in bookings_to_remind:
-            # Вместо refresh — получаем объект по id с eager-load связей
             db_b = await sess.get(
                 Booking,
                 getattr(b, "id", None),
                 options=[selectinload(Booking.user), selectinload(Booking.machine)]
             )
             if not db_b:
-                logging.warning(f"Booking {getattr(b, 'id', None)} not found in DB when preparing reminder")
                 continue
 
             user = getattr(db_b, "user", None)
             if not user or not getattr(user, "tg_id", None):
+                # Если у жителя нет Telegram, помечаем флаг чтобы не опрашивать повторно
+                await mark_booking_reminded_tg(db_b.id)
                 continue
 
             lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
@@ -79,7 +132,6 @@ async def check_confirmations(bot: Bot):
 
             kb = get_confirm_keyboard(db_b.id, lang)
 
-            # Формируем текст как раньше, но используем db_b
             try:
                 date_str = db_b.start_time.strftime("%d.%m")
                 start_time_str = db_b.start_time.strftime("%H:%M")
@@ -116,39 +168,49 @@ async def check_confirmations(bot: Bot):
 
             try:
                 await bot.send_message(user.tg_id, confirm_text, reply_markup=kb, parse_mode="HTML")
-                await set_booking_status(db_b.id, "Ожидание подтверждения")
-                logging.info(f"Sent confirmation request for booking {db_b.id} to {user.tg_id}")
+                await mark_booking_reminded_tg(db_b.id)
+                logging.info(f"Sent confirmation request for booking {db_b.id} to TG {user.tg_id}")
                 await asyncio.sleep(0.05)
             except Exception as e:
-                logging.error(f"Failed to send confirm request to {getattr(user, 'tg_id', None)}: {e}")
+                logging.error(f"Failed to send confirm request to TG {getattr(user, 'tg_id', None)}: {e}")
+                await mark_booking_reminded_tg(db_b.id)
                 continue
 
-    # --- ЭТАП 2: Авто-отмена (за 30 минут) ---
+    # --- ЭТАП 2.1: Первичная авто-отмена просроченных записей (за 30 минут) ---
     try:
-        expired = await get_expired_unconfirmed_bookings(minutes_before_deadline=30)
+        to_cancel = await get_expired_unconfirmed_bookings_to_cancel(minutes_before_deadline=30)
     except Exception as e:
-        logging.error(f"Failed to fetch expired unconfirmed bookings: {e}")
-        expired = []
+        logging.error(f"Failed to fetch expired unconfirmed bookings to cancel: {e}")
+        to_cancel = []
 
     async with async_session() as sess:
-        for b in expired:
+        for b in to_cancel:
             db_b = await sess.get(
                 Booking,
                 getattr(b, "id", None),
                 options=[selectinload(Booking.user), selectinload(Booking.machine)]
             )
             if not db_b:
-                logging.warning(f"Booking {getattr(b, 'id', None)} not found in DB when autocancel")
                 continue
 
+            user = getattr(db_b, "user", None)
+            has_tg = bool(user and getattr(user, "tg_id", None))
+
             try:
-                await cancel_booking(db_b.id)
+                await autocancel_booking(db_b.id, platform="tg" if has_tg else "none")
                 logging.info(f"Autocanceled booking {db_b.id} due to no confirmation")
             except Exception as e:
                 logging.error(f"Failed to cancel booking {db_b.id}: {e}")
                 continue
 
-            user = getattr(db_b, "user", None)
+            disc_res = None
+            if user:
+                try:
+                    from app.services.discipline_service import apply_discipline_event, EVENT_AUTOCANCEL_MISSED
+                    disc_res = await apply_discipline_event(user.id, db_b.id, EVENT_AUTOCANCEL_MISSED)
+                except Exception as e:
+                    logging.error(f"Failed to apply penalty for autocancel on booking {db_b.id}: {e}")
+
             dorm_id = getattr(db_b, "dormitory_id", None) or (db_b.machine.dormitory_id if getattr(db_b, "machine", None) else None) or getattr(user, "dormitory_id", 1) or 1
             booking_data = {
                 "dormitory_id": dorm_id,
@@ -161,58 +223,51 @@ async def check_confirmations(bot: Bot):
                 "machine_num": getattr(db_b.machine, "number_machine", "") if getattr(db_b, "machine", None) else ""
             }
 
-            # Применяем штраф за пропуск подтверждения
-            disc_res = None
-            if user:
-                try:
-                    from app.services.discipline_service import apply_discipline_event, EVENT_AUTOCANCEL_MISSED
-                    disc_res = await apply_discipline_event(user.id, db_b.id, EVENT_AUTOCANCEL_MISSED)
-                except Exception as e:
-                    logging.error(f"Failed to apply penalty for autocancel on booking {db_b.id}: {e}")
+            if has_tg:
+                await _send_autocancel_notice_tg(bot, user, booking_data, disc_res)
 
-            if user and getattr(user, "tg_id", None):
-                lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
-                if lang not in ALL_TEXTS:
-                    lang = "RU"
-                t = ALL_TEXTS[lang]
+            await _safe_create_task(
+                broadcast_slot_freed(bot, booking_data, exclude_tg_id=getattr(user, "tg_id", None))
+            )
 
-                raw_type = booking_data["machine_type"]
-                if raw_type == "Стиральная":
-                    m_type = t.get("machine_type_wash", "Стиральная")
-                elif raw_type == "Сушильная":
-                    m_type = t.get("machine_type_dry", "Сушильная")
-                else:
-                    m_type = raw_type
+    # --- ЭТАП 2.2: Досылка уведомлений в TG, если запись была отменена другим ботом (VK / MAX) ---
+    try:
+        pending_notices = await get_autocanceled_to_notify_tg()
+    except Exception as e:
+        logging.error(f"Failed to fetch autocanceled_to_notify_tg: {e}")
+        pending_notices = []
 
-                time_range = f"{booking_data['start_time_str']} – {booking_data['end_time_str']}"
-                autocancel_text = t.get(
-                    "booking_autocanceled",
-                    "❌ Ваша запись на {date} ({time_range}) {machine_type} №{machine_num} "
-                    "была отменена автоматически, так как вы не подтвердили её вовремя."
-                ).format(
-                    date=booking_data["date_str"],
-                    time_range=time_range,
-                    machine_type=m_type,
-                    machine_num=booking_data["machine_num"],
-                )
+    async with async_session() as sess:
+        for b in pending_notices:
+            db_b = await sess.get(
+                Booking,
+                getattr(b, "id", None),
+                options=[selectinload(Booking.user), selectinload(Booking.machine)]
+            )
+            if not db_b:
+                await mark_autocanceled_notified_tg(b.id)
+                continue
 
-                if disc_res:
-                    penalty_text = t.get("discipline_autocancel_penalty", "").format(
-                        delta=disc_res["delta"],
-                        score=disc_res["new_score"]
-                    )
-                    if penalty_text:
-                        autocancel_text = f"{autocancel_text}\n\n{penalty_text}"
-                    if disc_res.get("is_banned"):
-                        banned_alert = t.get("discipline_banned_alert", "")
-                        if banned_alert:
-                            autocancel_text = f"{autocancel_text}\n\n{banned_alert}"
+            user = getattr(db_b, "user", None)
+            if not user or not getattr(user, "tg_id", None):
+                await mark_autocanceled_notified_tg(db_b.id)
+                continue
 
-                try:
-                    await bot.send_message(user.tg_id, autocancel_text, parse_mode="HTML")
-                except Exception as e:
-                    logging.error(f"Failed to notify {user.tg_id} about autocancel: {e}")
+            dorm_id = getattr(db_b, "dormitory_id", None) or (db_b.machine.dormitory_id if getattr(db_b, "machine", None) else None) or getattr(user, "dormitory_id", 1) or 1
+            booking_data = {
+                "dormitory_id": dorm_id,
+                "machine_id": getattr(db_b, "inidmachine", None) or (db_b.machine.id if getattr(db_b, "machine", None) else None),
+                "start_iso": db_b.start_time.strftime("%Y%m%d%H%M"),
+                "date_str": db_b.start_time.strftime("%d.%m"),
+                "start_time_str": db_b.start_time.strftime("%H:%M"),
+                "end_time_str": db_b.end_time.strftime("%H:%M"),
+                "machine_type": getattr(db_b.machine, "type_machine", "") if getattr(db_b, "machine", None) else "",
+                "machine_num": getattr(db_b.machine, "number_machine", "") if getattr(db_b, "machine", None) else ""
+            }
 
+            disc_res = await get_autocancel_penalty_info(db_b.id)
+            await _send_autocancel_notice_tg(bot, user, booking_data, disc_res)
+            await mark_autocanceled_notified_tg(db_b.id)
             await _safe_create_task(
                 broadcast_slot_freed(bot, booking_data, exclude_tg_id=getattr(user, "tg_id", None))
             )

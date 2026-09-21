@@ -79,7 +79,14 @@ CREATE TABLE IF NOT EXISTS booking (
     end_time TIMESTAMP,
     inidresidents BIGINT NOT NULL REFERENCES residents(id) ON DELETE CASCADE,
     inidmachine INTEGER REFERENCES machines(id) ON DELETE CASCADE,
-    status VARCHAR(50) DEFAULT 'Ожидание'
+    status VARCHAR(50) DEFAULT 'Ожидание',
+    reminded_tg BOOLEAN DEFAULT FALSE,
+    reminded_vk BOOLEAN DEFAULT FALSE,
+    reminded_max BOOLEAN DEFAULT FALSE,
+    is_autocanceled BOOLEAN DEFAULT FALSE,
+    canceled_notified_tg BOOLEAN DEFAULT FALSE,
+    canceled_notified_vk BOOLEAN DEFAULT FALSE,
+    canceled_notified_max BOOLEAN DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_booking_machine_time ON booking(inidmachine, start_time, end_time);

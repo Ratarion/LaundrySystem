@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timedelta, time, date
 from typing import List, Optional
 
-from sqlalchemy import select, update, delete, and_, func, extract, Integer, or_, cast, Date
+from sqlalchemy import select, update, delete, and_, func, extract, Integer, or_, cast, Date, case
 from sqlalchemy.orm import joinedload
 
 from app.db.base import async_session
@@ -225,6 +225,13 @@ async def cancel_booking(booking_id: int, user_id: Optional[int] = None) -> bool
 
         if booking:
             booking.status = 'Отменено'
+            booking.reminded_tg = True
+            booking.reminded_vk = True
+            booking.reminded_max = True
+            booking.canceled_notified_tg = True
+            booking.canceled_notified_vk = True
+            booking.canceled_notified_max = True
+            booking.is_autocanceled = False
             await session.commit()
             return True
         return False
@@ -417,7 +424,8 @@ async def get_booking_by_id(booking_id: int) -> Optional[Booking]:
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
-async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int = 30):
+async def get_bookings_to_remind_max(minutes_before: int = 60, minutes_deadline: int = 30):
+    """Ищет записи, до начала которых от minutes_deadline до minutes_before минут, и которым еще не отправлялось напоминание в MAX."""
     now = get_kemerovo_now()
     max_time = now + timedelta(minutes=minutes_before)
     min_time = now + timedelta(minutes=minutes_deadline)
@@ -427,20 +435,25 @@ async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int
             and_(
                 Booking.start_time <= max_time,
                 Booking.start_time > min_time,
-                or_(Booking.status == 'Ожидание', Booking.status == None)
+                Booking.status.in_(['Ожидание', 'Ожидание подтверждения', None]),
+                or_(Booking.reminded_max == False, Booking.reminded_max == None)
             )
         )
         result = await session.execute(query)
         return result.scalars().all()
 
-async def set_booking_status(booking_id: int, status: str):
+async def mark_booking_reminded_max(booking_id: int):
+    """Отмечает, что напоминание в MAX отправлено, и переводит статус в 'Ожидание подтверждения'."""
     async with async_session() as session:
-        query = update(Booking).where(Booking.id == booking_id).values(status=status)
+        query = update(Booking).where(Booking.id == booking_id).values(
+            reminded_max=True,
+            status=case((Booking.status == 'Ожидание', 'Ожидание подтверждения'), else_=Booking.status)
+        )
         await session.execute(query)
         await session.commit()
 
-async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
-    """Ищет записи, до начала которых осталось <= minutes_before_deadline (30 мин), но не подтверждены."""
+async def get_expired_unconfirmed_bookings_to_cancel(minutes_before_deadline: int = 30):
+    """Ищет записи, до начала которых осталось <= minutes_before_deadline (30 мин), и которые еще не подтверждены."""
     now = get_kemerovo_now()
     deadline_time = now + timedelta(minutes=minutes_before_deadline)
 
@@ -454,6 +467,77 @@ async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
         )
         result = await session.execute(query)
         return result.scalars().all()
+
+async def autocancel_booking(booking_id: int, platform: str = "max"):
+    """Отменяет бронь по автоотмене с фиксацией платформы."""
+    values = {
+        "status": "Отменено",
+        "is_autocanceled": True,
+    }
+    if platform == "tg":
+        values["canceled_notified_tg"] = True
+    elif platform == "vk":
+        values["canceled_notified_vk"] = True
+    elif platform == "max":
+        values["canceled_notified_max"] = True
+
+    async with async_session() as session:
+        query = update(Booking).where(Booking.id == booking_id).values(**values)
+        await session.execute(query)
+        await session.commit()
+
+async def get_autocanceled_to_notify_max():
+    """Ищет автоотмененные записи, по которым еще не отправлено уведомление в MAX."""
+    now = get_kemerovo_now()
+    async with async_session() as session:
+        query = select(Booking).options(joinedload(Booking.machine), joinedload(Booking.user)).where(
+            and_(
+                Booking.is_autocanceled == True,
+                or_(Booking.canceled_notified_max == False, Booking.canceled_notified_max == None),
+                Booking.start_time >= now - timedelta(minutes=60),
+                Booking.start_time <= now + timedelta(minutes=35)
+            )
+        )
+        result = await session.execute(query)
+        return result.scalars().all()
+
+async def mark_autocanceled_notified_max(booking_id: int):
+    """Отмечает, что уведомление об автоотмене отправлено в MAX."""
+    async with async_session() as session:
+        query = update(Booking).where(Booking.id == booking_id).values(canceled_notified_max=True)
+        await session.execute(query)
+        await session.commit()
+
+async def get_autocancel_penalty_info(booking_id: int):
+    """Возвращает информацию о примененном штрафе за автоотмену для формирования текста уведомления."""
+    from app.db.models.score_log import ResidentScoreLog
+    async with async_session() as session:
+        query = select(ResidentScoreLog).where(
+            ResidentScoreLog.booking_id == booking_id,
+            ResidentScoreLog.reason == "AUTOCANCEL_MISSED"
+        ).order_by(ResidentScoreLog.id.desc()).limit(1)
+        res = (await session.execute(query)).scalar_one_or_none()
+        if res:
+            user = (await session.execute(select(User).where(User.id == res.resident_id))).scalar_one_or_none()
+            return {
+                "delta": res.delta,
+                "new_score": res.score_after,
+                "is_banned": getattr(user, "is_banned", False) if user else False
+            }
+        return None
+
+# Совместимость со старым API
+async def get_bookings_to_remind(minutes_before: int = 60, minutes_deadline: int = 30):
+    return await get_bookings_to_remind_max(minutes_before, minutes_deadline)
+
+async def set_booking_status(booking_id: int, status: str):
+    async with async_session() as session:
+        query = update(Booking).where(Booking.id == booking_id).values(status=status)
+        await session.execute(query)
+        await session.commit()
+
+async def get_expired_unconfirmed_bookings(minutes_before_deadline: int = 30):
+    return await get_expired_unconfirmed_bookings_to_cancel(minutes_before_deadline)
 
 async def has_weekly_booking(user_id: int, target_date: datetime, machine_type: Optional[str] = None) -> bool:
     """

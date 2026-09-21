@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import BigInteger, Integer, DateTime, String, ForeignKey
+from sqlalchemy import BigInteger, Integer, DateTime, String, ForeignKey, Boolean
 from datetime import datetime
 from app.db.models.dormitory import Dormitory
 from app.db.models.machine import Machine
@@ -17,6 +17,14 @@ class Booking(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=True)
+
+    reminded_tg: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    reminded_vk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    reminded_max: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    is_autocanceled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    canceled_notified_tg: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    canceled_notified_vk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    canceled_notified_max: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
 
     machine: Mapped["Machine"] = relationship("Machine")
     user: Mapped["Resident"] = relationship("Resident")
