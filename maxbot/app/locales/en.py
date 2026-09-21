@@ -129,9 +129,9 @@ ENtexts = {
             "• Stas Yakushev:\n"
             "  Telegram: @JokMiler (https://t.me/JokMiler)\n"
             "  VK: Stas Yakushev (https://vk.ru/ratarion)\n"
-            "• Developer:\n"
+            "• Vladimir Sakharov:\n"
             "  Telegram: @nrg0412 (https://t.me/nrg0412)\n"
-            "  VK: https://vk.ru/nrg412\n\n"
+            "  VK: Vladimir Sakharov (https://vk.ru/nrg412)\n\n"
             "⭐️ Rating & Hall of Fame:\n"
             "Check your discipline score, active streak, or view the campus Hall of Fame."
         )

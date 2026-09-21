@@ -123,9 +123,9 @@ CNtexts = {
             "• <b>Stas Yakushev:</b>\n"
             "  Telegram: <a href=\"https://t.me/JokMiler\">@JokMiler</a>\n"
             "  VK: <a href=\"https://vk.ru/ratarion\">Stas Yakushev</a>\n"
-            "• <b>开发者:</b>\n"
+            "• <b>Vladimir Sakharov:</b>\n"
             "  Telegram: <a href=\"https://t.me/nrg0412\">@nrg0412</a>\n"
-            "  VK: <a href=\"https://vk.ru/nrg412\">vk.ru/nrg412</a>\n\n"
+            "  VK: <a href=\"https://vk.ru/nrg412\">Vladimir Sakharov</a>\n\n"
             "⭐️ <b>纪律积分与荣誉殿堂:</b>\n"
             "查看您的纪律积分与连击，或访问宿舍区荣誉殿堂。"
         )

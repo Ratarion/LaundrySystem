@@ -125,9 +125,9 @@ ENtexts = {
             "• <b>Stas Yakushev:</b>\n"
             "  Telegram: <a href=\"https://t.me/JokMiler\">@JokMiler</a>\n"
             "  VK: <a href=\"https://vk.ru/ratarion\">Stas Yakushev</a>\n"
-            "• <b>Developer:</b>\n"
+            "• <b>Vladimir Sakharov:</b>\n"
             "  Telegram: <a href=\"https://t.me/nrg0412\">@nrg0412</a>\n"
-            "  VK: <a href=\"https://vk.ru/nrg412\">vk.ru/nrg412</a>\n\n"
+            "  VK: <a href=\"https://vk.ru/nrg412\">Vladimir Sakharov</a>\n\n"
             "⭐️ <b>Rating & Hall of Fame:</b>\n"
             "Check your discipline score, active streak, or view the campus Hall of Fame."
         )

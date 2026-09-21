@@ -129,9 +129,9 @@ CNtexts = {
             "• Stas Yakushev:\n"
             "  Telegram: @JokMiler (https://t.me/JokMiler)\n"
             "  VK: Stas Yakushev (https://vk.ru/ratarion)\n"
-            "• 开发者:\n"
+            "• Vladimir Sakharov:\n"
             "  Telegram: @nrg0412 (https://t.me/nrg0412)\n"
-            "  VK: https://vk.ru/nrg412\n\n"
+            "  VK: Vladimir Sakharov (https://vk.ru/nrg412)\n\n"
             "⭐️ 纪律积分与荣誉殿堂:\n"
             "查看您的纪律积分与连击，或访问宿舍区荣誉殿堂。"
         )
