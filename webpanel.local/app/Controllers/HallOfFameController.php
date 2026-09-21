@@ -33,13 +33,12 @@ class HallOfFameController extends BaseController
         $top3 = $this->getTopLeaders($dormitory_id, 3);
         $top3Ids = array_column($top3, 'id');
 
-        // 2. Антитоп 3 (наименьшие баллы / больше всего пропусков)
-        $bottom3 = $this->getBottomMissed($dormitory_id, 3, $top3Ids);
-        $bottom3Ids = array_column($bottom3, 'id');
+        // 2. Антитоп удалён по требованию
+        $bottom3 = [];
 
-        // 3. Общее количество жителей и промежуточных
+        // 3. Общее количество жителей и остальных участников
         $totalResidents = $this->getTotalResidentsCount($dormitory_id);
-        $shownCount = count($top3) + count($bottom3);
+        $shownCount = count($top3);
         $middleCount = max(0, $totalResidents - $shownCount);
 
         // 4. Определение "Моё место"
@@ -56,8 +55,7 @@ class HallOfFameController extends BaseController
         // Если запрошен AJAX для разворачивания промежуточного списка
         if (isset($_GET['ajax_middle'])) {
             header('Content-Type: application/json; charset=utf-8');
-            $excludeIds = array_merge($top3Ids, $bottom3Ids);
-            $middleList = $this->getMiddleResidents($dormitory_id, $excludeIds);
+            $middleList = $this->getMiddleResidents($dormitory_id, $top3Ids);
             echo json_encode(['success' => true, 'residents' => $middleList], JSON_UNESCAPED_UNICODE);
             exit;
         }

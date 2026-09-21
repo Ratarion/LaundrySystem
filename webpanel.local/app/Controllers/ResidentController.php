@@ -105,13 +105,19 @@ class ResidentController extends BaseController
 
                 $resident = new Resident($this->pdo);
                 if ($resident->load($residentId)) {
+                    $wasBanned = (bool)$resident->is_banned;
                     if ($sessionDormId !== null && (int)$resident->dormitory_id !== $sessionDormId) {
                         $this->redirect("/residents?error=" . urlencode('Вы можете изменять баллы только жителей своего общежития!'));
                     }
                     if (Resident::adjustScore($this->pdo, $residentId, $delta, $reason, $details)) {
+                        $resident->load($residentId);
                         $sign = $delta > 0 ? "+{$delta}" : "{$delta}";
+                        $notifyResult = '';
+                        if (!$wasBanned && $resident->is_banned) {
+                            $notifyResult = ' ' . $this->sendBanNotification($resident);
+                        }
                         $this->log->info('Ручная корректировка баллов', ['resident_id' => $residentId, 'delta' => $delta, 'admin' => $_SESSION['username'] ?? 'admin']);
-                        $successMessage = "Баллы жителя успешно изменены ({$sign})!";
+                        $successMessage = "Баллы жителя успешно изменены ({$sign})! Текущий баланс: {$resident->score} б.{$notifyResult}";
                     } else {
                         $errorMessage = 'Ошибка при изменении баллов жителя.';
                     }
@@ -220,16 +226,20 @@ class ResidentController extends BaseController
         $lang = strtoupper(trim($resident->language ?? 'RU'));
 
         if ($resident->is_banned) {
+            $isScoreBan = ($resident->score !== null && (int)$resident->score <= -1000);
             // Текст при блокировке
             if ($lang === 'EN') {
-                $msgHtml = "🚫 <b>Laundry booking access suspended</b>\n\nYour account has been suspended by the administration. Laundry booking is unavailable.\n\nPlease contact your dormitory elder or administrator.";
-                $plainDesc = "Доступ заблокирован администратором. Обратитесь к старосте/администратору.";
+                $cause = $isScoreBan ? "your discipline score dropped to -1000 points" : "decision of the administration";
+                $msgHtml = "🚫 <b>Laundry booking access suspended</b>\n\nYour account has been locked ({$cause}). Laundry booking is unavailable.\n\nPlease contact your dormitory elder or administrator.";
+                $plainDesc = "Доступ заблокирован ({$cause}). Обратитесь к старосте/администратору.";
             } elseif ($lang === 'CN') {
-                $msgHtml = "🚫 <b>洗衣预约权限已暂停</b>\n\n您的账号已被管理员封禁，无法预约洗衣。\n\n如有疑问，请联系宿舍长或管理员。";
-                $plainDesc = "账号已被管理员封禁，请联系宿舍长或管理员。";
+                $cause = $isScoreBan ? "您的纪律积分已降至 -1000 分" : "管理员决定";
+                $msgHtml = "🚫 <b>洗衣预约权限已暂停</b>\n\n您的账号已被封禁（{$cause}），无法预约洗衣。\n\n如有疑问，请联系宿舍长或管理员。";
+                $plainDesc = "账号已被封禁（{$cause}），请联系宿舍长或管理员。";
             } else {
-                $msgHtml = "🚫 <b>Доступ к записи на стирку заблокирован</b>\n\nВаш аккаунт заблокирован администратором. Запись на стирку недоступна.\n\nПожалуйста, обратитесь к старосте или администратору общежития.";
-                $plainDesc = "Доступ заблокирован администратором. Обратитесь к старосте или администратору.";
+                $cause = $isScoreBan ? "ваш рейтинг дисциплины опустился до -1000 баллов" : "по решению администрации";
+                $msgHtml = "🚫 <b>Доступ к записи на стирку заблокирован</b>\n\nВаш аккаунт заблокирован ({$cause}). Запись на стирку недоступна.\n\nПожалуйста, обратитесь к старосте или администратору общежития.";
+                $plainDesc = "Доступ заблокирован ({$cause}). Обратитесь к старосте или администратору.";
             }
         } else {
             // Текст при разблокировке

@@ -49,13 +49,21 @@ def get_rank_info(score: int, confirm_streak: int = 0) -> Dict[str, str]:
             "ENG": "Critical",
             "CN": "危险等级"
         }
+    elif score > -1000:
+        return {
+            "key": "penalty",
+            "badge": "🔴",
+            "RU": "Штрафник",
+            "ENG": "Penalty Zone",
+            "CN": "受罚等级"
+        }
     else:
         return {
             "key": "banned",
-            "badge": "🔴",
-            "RU": "Штрафник (Заблокирован)",
-            "ENG": "Restricted",
-            "CN": "受限住户"
+            "badge": "🚫",
+            "RU": "Заблокирован (-1000 б.)",
+            "ENG": "Banned (-1000 pts)",
+            "CN": "已封禁"
         }
 
 
@@ -149,13 +157,13 @@ async def apply_discipline_event(
                 details = "Корректировка администратором"
 
         # 4. Обновляем показатели
-        new_score = max(0, min(200, old_score + delta))
+        new_score = max(-1000, min(200, old_score + delta))
         resident.score = new_score
         resident.confirm_streak = confirm_streak
         resident.miss_streak = miss_streak
 
-        # Автобан при падении до 0 баллов
-        if new_score <= 0:
+        # Автобан при падении до -1000 баллов
+        if new_score <= -1000:
             resident.is_banned = True
 
         # 5. Записываем в лог
@@ -172,7 +180,16 @@ async def apply_discipline_event(
 
         await session.commit()
 
-        rank = get_rank_info(new_score, confirm_streak)
+        if resident.is_banned:
+            rank = {
+                "key": "banned",
+                "badge": "🚫",
+                "RU": "Заблокирован",
+                "ENG": "Banned",
+                "CN": "已封禁"
+            }
+        else:
+            rank = get_rank_info(new_score, confirm_streak)
 
         return {
             "resident_id": resident_id,
@@ -220,7 +237,16 @@ async def get_resident_discipline_card(resident_id: int, limit_history: int = 5)
                 "created_at": l.created_at
             })
 
-        rank = get_rank_info(score, confirm_streak)
+        if resident.is_banned:
+            rank = {
+                "key": "banned",
+                "badge": "🚫",
+                "RU": "Заблокирован",
+                "ENG": "Banned",
+                "CN": "已封禁"
+            }
+        else:
+            rank = get_rank_info(score, confirm_streak)
 
         return {
             "resident_id": resident.id,

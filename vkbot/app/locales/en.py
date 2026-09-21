@@ -110,7 +110,7 @@ ENtexts = {
         "discipline_decline_reward": "👍 +{delta} point for timely cancellation (slot freed). Score: {score}",
         "discipline_early_cancel_reward": "👍 +{delta} points for early cancellation! Score: {score}",
         "discipline_autocancel_penalty": "⚠️ Penalty: {delta} points for missed booking without cancellation! Current score: {score}.",
-        "discipline_banned_alert": "🚫 Warning: your score reached 0. Booking is locked. Please contact the dorm manager.",
+        "discipline_banned_alert": "🚫 Warning: your score reached -1000. Booking is locked. Please contact the dorm manager.",
         "discipline_profile_title": "⭐️ Discipline Rating\n\n👤 Resident: {name}\n🏆 Rank: {badge} {rank}\n📊 Score: {score} / 200\n🔥 Confirmation streak: {confirm_streak}\n⚠️ Miss streak: {miss_streak}\n\n📋 Rules:\n• On-time confirmation: +5 pts (+streak bonus up to +12)\n• Early cancellation: +2 pts\n• Decline during prompt: +1 pt\n• Missed without cancel: -15..-40 pts\n\n🕒 Recent activity:\n{history}",
         "discipline_no_history": "No score transactions yet.",
 

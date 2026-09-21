@@ -304,10 +304,10 @@ class Resident
             }
 
             $currentScore = (int)$row['score'];
-            $newScore = max(0, min(200, $currentScore + (int)$delta));
+            $newScore = max(-1000, min(200, $currentScore + (int)$delta));
             $isBanned = $row['is_banned'];
 
-            if ($newScore <= 0) {
+            if ($newScore <= -1000) {
                 $isBanned = true;
             }
 

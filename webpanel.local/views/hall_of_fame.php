@@ -90,7 +90,7 @@
                             <?= e(trim($myCard['last_name'] . ' ' . $myCard['first_name'] . ' ' . ($myCard['patronymic'] ?? ''))) ?>
                         </div>
                         <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
-                            <?= e($myCard['dormitory_name'] ?? 'КузГТУ') ?>, комната <b style="color: var(--text-main);"><?= e($myCard['inidroom']) ?></b> 
+                            <?= e($myCard['dormitory_name'] ?? 'КузГТУ') ?> 
                             • <span>Место <?= $pos ?> из <?= $totalResidents ?></span>
                         </div>
                     </div>
@@ -215,11 +215,8 @@
                             </span>
                         </div>
 
-                        <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">
+                        <div style="font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 14px;">
                             <?= e(trim($leader['last_name'] . ' ' . $leader['first_name'] . ' ' . ($leader['patronymic'] ?? ''))) ?>
-                        </div>
-                        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-                            Комната: <b style="color: var(--text-main);"><?= e($leader['inidroom']) ?></b>
                         </div>
 
                         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;">
@@ -261,12 +258,12 @@
         <?php endif; ?>
     </div>
 
-    <!-- МЕЖДУ НИМИ: РАЗДЕЛИТЕЛЬ 3 ТОЧКИ С КНОПКОЙ СКРЫТЬ/ПОКАЗАТЬ ПРОМЕЖУТОК -->
-    <div style="text-align: center; margin: 36px 0;">
+    <!-- РАЗДЕЛИТЕЛЬ: ОСТАЛЬНЫЕ УЧАСТНИКИ РЕЙТИНГА -->
+    <div style="text-align: center; margin: 36px 0 48px 0;">
         <div style="display: inline-flex; align-items: center; gap: 14px; background: #ffffff; padding: 10px 24px; border-radius: 9999px; border: 1.5px dashed var(--border); box-shadow: var(--shadow-sm);">
             <span style="font-size: 20px; letter-spacing: 4px; color: #9ca3af; font-weight: 900;">•••</span>
             <span style="font-size: 13px; color: var(--text-main); font-weight: 600;">
-                Промежуток: <b style="color: var(--primary); font-weight: 800;"><?= $middleCount ?></b> добросовестных жителей
+                Остальные участники рейтинга: <b style="color: var(--primary); font-weight: 800;"><?= $middleCount ?></b> чел.
             </span>
             <span style="font-size: 20px; letter-spacing: 4px; color: #9ca3af; font-weight: 900;">•••</span>
             
@@ -281,7 +278,7 @@
             <?php endif; ?>
         </div>
 
-        <!-- Контейнер для раскрытия промежуточного списка -->
+        <!-- Контейнер для раскрытия списка остальных участников -->
         <div id="middleListContainer" style="display: none; margin-top: 20px; text-align: left;">
             <div class="glass-card" style="padding: 16px; overflow-x: auto;">
                 <div id="middleListContent">
@@ -291,68 +288,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- АНТИТОП 3: КТО ПРОПУСКАЛ СТИРКУ -->
-    <div style="margin-top: 10px; margin-bottom: 40px;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #dc2626; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626;"></i> Антитоп-3 (кто пропускал стирку)
-            </h2>
-            <span style="font-size: 12px; background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; padding: 3px 10px; border-radius: 9999px; font-weight: 700;">
-                Штрафники дисциплины
-            </span>
-        </div>
-
-        <?php if (empty($bottom3)): ?>
-            <div class="glass-card" style="text-align: center; padding: 28px; color: #059669; font-weight: 600;">
-                <i class="fa-solid fa-face-smile" style="font-size: 24px; margin-bottom: 6px; display: block; color: #10b981;"></i>
-                Отлично! В этом общежитии нет злостных нарушителей с низкими баллами.
-            </div>
-        <?php else: ?>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-                <?php foreach ($bottom3 as $idx => $bad): 
-                    $bScore = (int)$bad['score'];
-                    $bMiss = (int)$bad['miss_streak'];
-                    $bPlace = $idx + 1;
-                ?>
-                <div class="glass-card" style="background: #ffffff; border: 1.5px solid #fecaca; box-shadow: var(--shadow-sm); padding: 20px; border-radius: 12px;">
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 13px; font-weight: 800; color: #dc2626; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fa-solid fa-ban"></i> Антитоп #<?= $bPlace ?>
-                        </span>
-                        <span style="font-size: 11px; background: #f1f5f9; padding: 3px 8px; border-radius: 9999px; color: #64748b; font-weight: 600;">
-                            <?= e($bad['dormitory_name'] ?? 'КузГТУ') ?>
-                        </span>
-                    </div>
-
-                    <div style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">
-                        <?= e(trim($bad['last_name'] . ' ' . $bad['first_name'] . ' ' . ($bad['patronymic'] ?? ''))) ?>
-                    </div>
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-                        Комната: <b style="color: var(--text-main);"><?= e($bad['inidroom']) ?></b>
-                    </div>
-
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                        <span style="font-size: 12px; padding: 4px 10px; border-radius: 6px; background: #fee2e2; color: #dc2626; font-weight: 700; border: 1px solid #fca5a5;">
-                            <i class="fa-solid fa-heart-crack"></i> <?= $bScore ?> б.
-                        </span>
-                        <?php if ($bMiss > 0): ?>
-                            <span style="font-size: 12px; padding: 4px 10px; border-radius: 6px; background: #ffedd5; color: #c2410c; font-weight: 700; border: 1px solid #fed7aa;">
-                                ⚠️ <?= $bMiss ?> пропусков подряд
-                            </span>
-                        <?php else: ?>
-                            <span style="font-size: 12px; color: var(--text-muted);">
-                                Низкий баланс
-                            </span>
-                        <?php endif; ?>
-                    </div>
-
-                </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
     </div>
 
 </div>
@@ -395,7 +330,6 @@ function loadMiddleList() {
             html += '<thead><tr style="background:#f9fafb; border-bottom:2px solid var(--border); color:var(--text-muted); text-align:left;">' +
                 '<th style="padding:10px 14px; width:70px;">Место</th>' +
                 '<th style="padding:10px 14px;">Житель</th>' +
-                '<th style="padding:10px 14px; text-align:center;">Комната</th>' +
                 '<th style="padding:10px 14px;">Корпус</th>' +
                 '<th style="padding:10px 14px; text-align:center;">Баллы</th>' +
                 '<th style="padding:10px 14px; text-align:center;">Стрик</th>' +
@@ -406,7 +340,6 @@ function loadMiddleList() {
                 html += '<tr style="border-bottom:1px solid var(--border);">' +
                     '<td style="padding:10px 14px; font-weight:700; color:var(--primary);">#' + pos + '</td>' +
                     '<td style="padding:10px 14px; font-weight:600; color:var(--text-main);">' + (r.last_name + ' ' + r.first_name + (r.patronymic ? ' ' + r.patronymic : '')) + '</td>' +
-                    '<td style="padding:10px 14px; text-align:center; color:var(--text-main); font-weight:600;">' + (r.inidroom || '—') + '</td>' +
                     '<td style="padding:10px 14px; color:var(--text-muted);">' + (r.dormitory_name || '—') + '</td>' +
                     '<td style="padding:10px 14px; text-align:center; font-weight:700; color:#059669;">' + r.score + ' б.</td>' +
                     '<td style="padding:10px 14px; text-align:center; font-weight:600; color:#e11d48;">' + streakBadge + '</td>' +
