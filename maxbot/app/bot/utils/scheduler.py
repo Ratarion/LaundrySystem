@@ -15,9 +15,12 @@ from app.laundry_repo import (
     get_autocanceled_to_notify_max,
     mark_autocanceled_notified_max,
     get_autocancel_penalty_info,
+    get_bookings_to_notify_finish_max,
+    mark_booking_finish_notified_max,
 )
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
+from app.bot.utils.text import strip_html
 from app.bot.keyboards import get_confirm_keyboard
 from app.bot.utils.timezone import get_kemerovo_now
 
@@ -231,6 +234,68 @@ async def check_confirmations(bot):
             asyncio.create_task(
                 broadcast_slot_freed(bot, booking_data, exclude_max_id=user.max_id)
             )
+
+    # --- ЭТАП 3: Напоминание об окончании стирки (за 15 минут до end_time) ---
+    try:
+        finish_to_notify = await get_bookings_to_notify_finish_max()
+    except Exception as e:
+        logging.error(f"[MaxBot] Ошибка при выборке finish bookings: {e}")
+        finish_to_notify = []
+
+    async with async_session() as sess:
+        for b in finish_to_notify:
+            db_b = await sess.get(
+                Booking,
+                getattr(b, "id", None),
+                options=[selectinload(Booking.user), selectinload(Booking.machine)]
+            )
+            if not db_b:
+                continue
+
+            user = getattr(db_b, "user", None)
+            if not user or not getattr(user, "max_id", None):
+                await mark_booking_finish_notified_max(db_b.id)
+                continue
+
+            lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
+            if lang not in ALL_TEXTS:
+                lang = "RU"
+            t = ALL_TEXTS[lang]
+
+            end_time_str = db_b.end_time.strftime("%H:%M") if db_b.end_time else ""
+            raw_type = getattr(db_b.machine, "type_machine", "") if getattr(db_b, "machine", None) else ""
+            if raw_type == "Стиральная":
+                machine_type = t.get("machine_type_wash", "Стиральная")
+            elif raw_type == "Сушильная":
+                machine_type = t.get("machine_type_dry", "Сушильная")
+            else:
+                machine_type = raw_type or "Машина"
+
+            machine_num = getattr(db_b.machine, "number_machine", "?") if getattr(db_b, "machine", None) else "?"
+
+            finish_text = t.get(
+                "wash_finishing_soon",
+                "⏳ <b>Ваша стирка скоро завершится!</b>\n\n🧺 {machine_type} №{machine_num} завершает работу в <b>{end_time}</b>.\nПожалуйста, не забудьте вовремя забрать вещи!"
+            ).format(
+                machine_type=machine_type,
+                machine_num=machine_num,
+                end_time=end_time_str
+            )
+            finish_text = strip_html(finish_text)
+
+            try:
+                await bot.send_message(
+                    user_id=user.max_id,
+                    text=finish_text,
+                )
+                await mark_booking_finish_notified_max(db_b.id)
+                logging.info(f"[MaxBot] Отправлено уведомление об окончании стирки {db_b.id} пользователю {user.max_id}")
+                await asyncio.sleep(0.05)
+            except Exception as e:
+                logging.error(f"[MaxBot] Ошибка отправки уведомления об окончании пользователю {getattr(user, 'max_id', None)}: {e}")
+                await mark_booking_finish_notified_max(db_b.id)
+                continue
+
 
 
 def start_scheduler(bot):

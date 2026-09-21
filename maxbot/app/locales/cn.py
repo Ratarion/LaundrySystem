@@ -74,6 +74,11 @@ CNtexts = {
         "booking_autocanceled": "❌ 您的预约 日期: {date} 时间: {time_range} 机器: {machine_type} №{machine_num} 已被自动取消，因为您未及时确认。",
         "booking_already_confirmed": "该预约已确认或已取消。",
         "booking_already_canceled": "该预约已被自动取消（您未及时确认）。",
+        "wash_finishing_soon": (
+            "⏳ <b>您的洗/烘衣即将完成！</b>\n\n"
+            "🧺 {machine_type} №{machine_num} 将在 <b>{end_time}</b> 结束。\n"
+            "请及时取出衣物，以免耽误下一位同学使用！"
+        ),
         "no_active_machines_type": "没有选定类型的可用机器！",
         "no_active_machines": "当前没有可用的机器。",
         "section_menu_title": "主菜单",

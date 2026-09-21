@@ -25,6 +25,9 @@ class Booking(Base):
     canceled_notified_tg: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
     canceled_notified_vk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
     canceled_notified_max: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    finish_notified_tg: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    finish_notified_vk: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
+    finish_notified_max: Mapped[bool] = mapped_column(Boolean, default=False, nullable=True)
 
     machine: Mapped["Machine"] = relationship("Machine")
     user: Mapped["Resident"] = relationship("Resident")

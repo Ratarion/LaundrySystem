@@ -46,6 +46,11 @@ ENtexts = {
         "booking_declined": "❌ You cancelled the booking. The slot is freed for other residents.",
         "booking_autocanceled": "❌ Your booking Date: {date} Time: {time_range} Machine: {machine_type} №{machine_num} was automatically canceled because you did not confirm it in time.",
         "booking_already_confirmed": "This booking has already been confirmed or canceled.",
+        "wash_finishing_soon": (
+            "⏳ <b>Your laundry is finishing soon!</b>\n\n"
+            "🧺 {machine_type} #{machine_num} finishes at <b>{end_time}</b>.\n"
+            "Please remember to collect your laundry promptly so the next resident can use the machine!"
+        ),
         "for_wash": "for washing",
         "for_dry": "for drying",
 

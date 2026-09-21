@@ -522,6 +522,29 @@ async def mark_autocanceled_notified_tg(booking_id: int):
         await session.execute(query)
         await session.commit()
 
+async def get_bookings_to_notify_finish_tg():
+    """Ищет активные записи, которые завершаются в ближайшие 15 минут, и жителю еще не отправлено уведомление об окончании в TG."""
+    now = get_kemerovo_now()
+    async with async_session() as session:
+        query = select(Booking).options(joinedload(Booking.machine), joinedload(Booking.user)).where(
+            and_(
+                Booking.end_time <= now + timedelta(minutes=15),
+                Booking.end_time > now - timedelta(minutes=2),
+                Booking.status != 'Отменено',
+                or_(Booking.finish_notified_tg == False, Booking.finish_notified_tg == None)
+            )
+        )
+        result = await session.execute(query)
+        return result.scalars().all()
+
+async def mark_booking_finish_notified_tg(booking_id: int):
+    """Отмечает, что уведомление об окончании стирки отправлено в TG."""
+    async with async_session() as session:
+        query = update(Booking).where(Booking.id == booking_id).values(finish_notified_tg=True)
+        await session.execute(query)
+        await session.commit()
+
+
 async def get_autocancel_penalty_info(booking_id: int):
     """Возвращает информацию о примененном штрафе за автоотмену для формирования текста уведомления."""
     from app.db.models.score_log import ResidentScoreLog

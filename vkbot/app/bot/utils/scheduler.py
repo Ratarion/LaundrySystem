@@ -16,6 +16,8 @@ from app.laundry_repo import (
     get_autocanceled_to_notify_vk,
     mark_autocanceled_notified_vk,
     get_autocancel_penalty_info,
+    get_bookings_to_notify_finish_vk,
+    mark_booking_finish_notified_vk,
 )
 from app.bot.utils.translate import ALL_TEXTS
 from app.bot.utils.broadcaster import broadcast_slot_freed
@@ -274,6 +276,68 @@ async def check_confirmations(bot: Bot):
                 broadcast_slot_freed(bot, booking_data, exclude_vk_id=getattr(user, "vk_id", None))
             )
 
+    # --- ЭТАП 3: Напоминание об окончании стирки (за 15 минут до end_time) ---
+    try:
+        finish_to_notify = await get_bookings_to_notify_finish_vk()
+    except Exception as e:
+        logging.error(f"Failed to fetch bookings_to_notify_finish_vk: {e}")
+        finish_to_notify = []
+
+    async with async_session() as sess:
+        for b in finish_to_notify:
+            db_b = await sess.get(
+                Booking,
+                getattr(b, "id", None),
+                options=[selectinload(Booking.user), selectinload(Booking.machine)]
+            )
+            if not db_b:
+                continue
+
+            user = getattr(db_b, "user", None)
+            if not user or not getattr(user, "vk_id", None):
+                await mark_booking_finish_notified_vk(db_b.id)
+                continue
+
+            lang = str(getattr(user, "language", "RU") or "RU").strip().upper()
+            if lang not in ALL_TEXTS:
+                lang = "RU"
+            t = ALL_TEXTS[lang]
+
+            end_time_str = db_b.end_time.strftime("%H:%M") if db_b.end_time else ""
+            raw_type = getattr(db_b.machine, "type_machine", "") if getattr(db_b, "machine", None) else ""
+            if raw_type == "Стиральная":
+                machine_type = t.get("machine_type_wash", "Стиральная")
+            elif raw_type == "Сушильная":
+                machine_type = t.get("machine_type_dry", "Сушильная")
+            else:
+                machine_type = raw_type or "Машина"
+
+            machine_num = getattr(db_b.machine, "number_machine", "?") if getattr(db_b, "machine", None) else "?"
+
+            finish_text = t.get(
+                "wash_finishing_soon",
+                "⏳ <b>Ваша стирка скоро завершится!</b>\n\n🧺 {machine_type} №{machine_num} завершает работу в <b>{end_time}</b>.\nПожалуйста, не забудьте вовремя забрать вещи!"
+            ).format(
+                machine_type=machine_type,
+                machine_num=machine_num,
+                end_time=end_time_str
+            )
+            finish_text = strip_html(finish_text)
+
+            try:
+                await bot.api.messages.send(
+                    peer_id=user.vk_id,
+                    message=finish_text,
+                    random_id=0
+                )
+                await mark_booking_finish_notified_vk(db_b.id)
+                logging.info(f"Sent wash finish notification for booking {db_b.id} to VK {user.vk_id}")
+                await asyncio.sleep(0.05)
+            except Exception as e:
+                logging.error(f"Failed to send wash finish notification to VK {getattr(user, 'vk_id', None)}: {e}")
+                await mark_booking_finish_notified_vk(db_b.id)
+                continue
+
 
 def start_scheduler(bot: Bot):
     scheduler.add_job(
@@ -287,15 +351,3 @@ def start_scheduler(bot: Bot):
     scheduler.start()
     logging.info("Scheduler started")
 
-
-def start_scheduler(bot: Bot):
-    scheduler.add_job(
-        check_confirmations,
-        'interval',
-        minutes=1,
-        kwargs={"bot": bot},
-        max_instances=1,
-        coalesce=True
-    )
-    scheduler.start()
-    logging.info("Scheduler started")

@@ -86,7 +86,10 @@ CREATE TABLE IF NOT EXISTS booking (
     is_autocanceled BOOLEAN DEFAULT FALSE,
     canceled_notified_tg BOOLEAN DEFAULT FALSE,
     canceled_notified_vk BOOLEAN DEFAULT FALSE,
-    canceled_notified_max BOOLEAN DEFAULT FALSE
+    canceled_notified_max BOOLEAN DEFAULT FALSE,
+    finish_notified_tg BOOLEAN DEFAULT FALSE,
+    finish_notified_vk BOOLEAN DEFAULT FALSE,
+    finish_notified_max BOOLEAN DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_booking_machine_time ON booking(inidmachine, start_time, end_time);

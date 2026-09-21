@@ -172,7 +172,30 @@
     </div>
     <?php endif; ?>
 
-    <!-- ТАБЛИЦА БРОНИРОВАНИЙ -->
+    <!-- ПАНЕЛЬ ДЕЙСТВИЙ: ПЕРЕКЛЮЧЕНИЕ ВИДА И ЭКСПОРТ -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div class="view-mode-toggle" style="display: inline-flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: #f1f5f9; padding: 3px; gap: 4px;">
+            <button type="button" id="toggleTableBtn" class="btn btn-sm btn-primary" onclick="switchViewMode('table')" style="border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-table-list"></i> Таблица
+            </button>
+            <button type="button" id="toggleTimelineBtn" class="btn btn-sm btn-secondary" onclick="switchViewMode('timeline')" style="border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-chart-gantt"></i> Шахматка
+            </button>
+        </div>
+
+        <?php if ($isLoggedIn): 
+            $exportParams = $_GET;
+            $exportParams['export'] = 'csv';
+            $exportUrl = '/booking?' . http_build_query($exportParams);
+        ?>
+            <a href="<?= e($exportUrl) ?>" class="btn" style="background: #10b981; color: #fff; font-size: 13px; padding: 8px 16px; font-weight: 600; border: none; display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);">
+                <i class="fa-solid fa-file-excel"></i> Экспорт в Excel / CSV
+            </a>
+        <?php endif; ?>
+    </div>
+
+    <!-- ТАБЛИЧНЫЙ ВИД БРОНИРОВАНИЙ -->
+    <div id="tableViewContainer">
     <?php if (empty($bookings)): ?>
         <div class="glass-card" style="text-align: center; padding: 48px 20px;">
             <div style="font-size: 52px; color: var(--primary); margin-bottom: 16px;">
@@ -281,6 +304,302 @@
         </div>
     </div>
     <?php endif; ?>
+    </div>
+
+    <!-- ШАХМАТКА (TIMELINE VIEW) -->
+    <?php
+    $startD = new DateTime($date_from);
+    $endD   = new DateTime($date_to);
+    $endD->modify('+1 day');
+    $period = new DatePeriod($startD, new DateInterval('P1D'), $endD);
+    $timelineDates = [];
+    foreach ($period as $dt) {
+        $timelineDates[] = $dt->format('Y-m-d');
+    }
+    if (count($timelineDates) > 14) {
+        $timelineDates = array_slice($timelineDates, 0, 14);
+    }
+    if (empty($timelineDates)) {
+        $timelineDates[] = date('Y-m-d');
+    }
+
+    $timelineBookings = [];
+    foreach ($bookings as $b) {
+        $bDate = date('Y-m-d', strtotime($b['start_time']));
+        $mId = (int)($b['machine_id'] ?? $b['inidmachine'] ?? 0);
+        if (!isset($timelineBookings[$bDate])) {
+            $timelineBookings[$bDate] = [];
+        }
+        if (!isset($timelineBookings[$bDate][$mId])) {
+            $timelineBookings[$bDate][$mId] = [];
+        }
+        $timelineBookings[$bDate][$mId][] = $b;
+    }
+
+    $displayMachines = $machines;
+    if (!empty($machine_id)) {
+        $displayMachines = array_filter($machines, function($m) use ($machine_id) {
+            return (int)$m->id === (int)$machine_id;
+        });
+    }
+    usort($displayMachines, function($a, $b) {
+        if ($a->dormitory_id != $b->dormitory_id) return $a->dormitory_id <=> $b->dormitory_id;
+        if ($a->type_machine != $b->type_machine) return strcmp($b->type_machine, $a->type_machine);
+        return strnatcmp($a->number_machine, $b->number_machine);
+    });
+    ?>
+
+    <div id="timelineViewContainer" style="display: none;">
+        <!-- Переключатель дней для шахматки -->
+        <div class="timeline-date-tabs" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+            <?php foreach ($timelineDates as $idx => $tDate): 
+                $dTime = strtotime($tDate);
+                $isToday = ($tDate === date('Y-m-d'));
+                $isTomorrow = ($tDate === date('Y-m-d', strtotime('+1 day')));
+                $label = date('d.m', $dTime);
+                if ($isToday) $label .= ' (Сегодня)';
+                elseif ($isTomorrow) $label .= ' (Завтра)';
+                else {
+                    $daysRu = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                    $label .= ' (' . $daysRu[(int)date('w', $dTime)] . ')';
+                }
+            ?>
+                <button type="button" class="btn btn-sm timeline-day-tab <?= ($idx === 0) ? 'btn-primary' : 'btn-secondary' ?>" 
+                        data-date="<?= $tDate ?>" 
+                        onclick="showTimelineDay('<?= $tDate ?>')">
+                    <i class="fa-regular fa-calendar"></i> <?= e($label) ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Доски по каждому дню -->
+        <?php foreach ($timelineDates as $idx => $tDate): 
+            $isToday = ($tDate === date('Y-m-d'));
+            $nowMin = (int)date('G') * 60 + (int)date('i');
+            $showNowLine = $isToday && ($nowMin >= 480 && $nowMin <= 1380);
+            $nowPct = $showNowLine ? round(($nowMin - 480) / 900 * 100, 3) : 0;
+        ?>
+        <div class="timeline-day-board glass-card" id="timeline-day-<?= $tDate ?>" style="padding: 0; overflow: hidden; <?= ($idx === 0) ? '' : 'display: none;' ?>">
+            <div style="overflow-x: auto; width: 100%;">
+                <div style="min-width: 980px;">
+                    <!-- Заголовок сетки с часами -->
+                    <div style="display: flex; background: #f8fafc; border-bottom: 2px solid var(--border); font-size: 12px; font-weight: 700; color: #64748b;">
+                        <div style="width: 200px; flex-shrink: 0; padding: 12px 16px; border-right: 1px solid var(--border);">
+                            <i class="fa-solid fa-soap"></i> Машина / Корпус
+                        </div>
+                        <div style="flex: 1; display: flex; position: relative;">
+                            <?php for ($h = 8; $h <= 22; $h++): ?>
+                                <div style="width: calc(100% / 15); padding: 12px 4px; text-align: left; border-right: 1px dashed rgba(226, 232, 240, 0.9); box-sizing: border-box;">
+                                    <?= sprintf('%02d:00', $h) ?>
+                                </div>
+                            <?php endfor; ?>
+                        </div>
+                    </div>
+
+                    <!-- Строки машинок -->
+                    <?php if (empty($displayMachines)): ?>
+                        <div style="padding: 36px; text-align: center; color: #94a3b8;">
+                            <i class="fa-solid fa-ban" style="font-size: 32px; margin-bottom: 8px;"></i>
+                            <div>Нет доступных машинок в выбранном общежитии.</div>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($displayMachines as $m): 
+                            $mBookings = $timelineBookings[$tDate][$m->id] ?? [];
+                            $isWash = ($m->type_machine === 'Стиральная');
+                            $typeIcon = $isWash ? 'fa-soap' : 'fa-wind';
+                            $iconColor = $isWash ? '#0284c7' : '#f59e0b';
+                        ?>
+                        <div style="display: flex; border-bottom: 1px solid var(--border); align-items: stretch; background: #ffffff;">
+                            <!-- Колонка машины -->
+                            <div style="width: 200px; flex-shrink: 0; padding: 10px 16px; border-right: 1px solid var(--border); background: #f8fafc; display: flex; flex-direction: column; justify-content: center;">
+                                <div style="font-size: 13px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid <?= $typeIcon ?>" style="color: <?= $iconColor ?>;"></i>
+                                    <?= e($m->type_machine) ?> #<?= e($m->number_machine) ?>
+                                </div>
+                                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                                    <?= e($m->dormitory_name ?? ('Общежитие №' . $m->dormitory_id)) ?>
+                                </div>
+                            </div>
+
+                            <!-- Дорожка таймлайна -->
+                            <div style="flex: 1; position: relative; height: 54px; background: #ffffff;">
+                                <!-- Фоновая сетка часов -->
+                                <div style="display: flex; width: 100%; height: 100%; position: absolute; top: 0; left: 0; pointer-events: none;">
+                                    <?php for ($h = 8; $h <= 22; $h++): ?>
+                                        <div style="width: calc(100% / 15); height: 100%; border-right: 1px dashed rgba(226, 232, 240, 0.9); box-sizing: border-box;"></div>
+                                    <?php endfor; ?>
+                                </div>
+
+                                <!-- Линия текущего времени -->
+                                <?php if ($showNowLine): ?>
+                                    <div style="position: absolute; left: <?= $nowPct ?>%; top: 0; bottom: 0; width: 2px; background: #ef4444; z-index: 15; pointer-events: none;" title="Текущее время: <?= date('H:i') ?>">
+                                        <span style="position: absolute; top: -14px; left: -14px; background: #ef4444; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">Сейчас</span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Блоки бронирований -->
+                                <?php foreach ($mBookings as $b): 
+                                    $bStartSec   = strtotime($b['start_time']);
+                                    $bEndSec     = !empty($b['end_time']) ? strtotime($b['end_time']) : ($bStartSec + 90 * 60);
+                                    $dayStartSec = strtotime($tDate . ' 08:00:00');
+                                    $dayEndSec   = strtotime($tDate . ' 23:00:00');
+
+                                    if ($bEndSec <= $dayStartSec || $bStartSec >= $dayEndSec) continue;
+
+                                    $clampedStart = max($bStartSec, $dayStartSec);
+                                    $clampedEnd   = min($bEndSec, $dayEndSec);
+
+                                    $leftPct  = round(($clampedStart - $dayStartSec) / (15 * 3600) * 100, 3);
+                                    $widthPct = max(2.5, round(($clampedEnd - $clampedStart) / (15 * 3600) * 100, 3));
+
+                                    $bStatus = $b['status'];
+                                    $slotBg = '#f3f4f6';
+                                    $slotColor = '#1f2937';
+                                    $slotBorder = '#d1d5db';
+                                    $badgeCls = 'badge-secondary';
+
+                                    if ($bStatus === 'Подтверждено' || $bStatus === 'Подверженная') {
+                                        $slotBg = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                                        $slotColor = '#ffffff';
+                                        $slotBorder = '#047857';
+                                        $badgeCls = 'badge-success';
+                                    } elseif ($bStatus === 'Ожидание подтверждения') {
+                                        $slotBg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)';
+                                        $slotColor = '#ffffff';
+                                        $slotBorder = '#0284c7';
+                                        $badgeCls = 'badge-info';
+                                    } elseif ($bStatus === 'Ожидание') {
+                                        $slotBg = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                                        $slotColor = '#ffffff';
+                                        $slotBorder = '#b45309';
+                                        $badgeCls = 'badge-warning';
+                                    } elseif (in_array($bStatus, ['Отменено', 'cancelled', 'Отмена'])) {
+                                        $slotBg = '#fee2e2';
+                                        $slotColor = '#991b1b';
+                                        $slotBorder = '#ef4444';
+                                        $badgeCls = 'badge-danger';
+                                    }
+
+                                    $fioFull = trim(($b['last_name'] ?? '') . ' ' . ($b['first_name'] ?? '') . ' ' . ($b['patronymic'] ?? ''));
+                                    $fioShort = e(($b['last_name'] ?? '') . ' ' . mb_substr($b['first_name'] ?? '', 0, 1) . '.');
+                                    $timeStr = date('H:i', $bStartSec) . ' - ' . date('H:i', $bEndSec);
+                                    $dateTimeStr = date('d.m.Y H:i', $bStartSec) . ' - ' . date('H:i', $bEndSec);
+                                    $mName = ($b['type_machine'] ?? $m->type_machine) . ' #' . ($b['number_machine'] ?? $m->number_machine);
+                                    $dName = !empty($b['dormitory_name']) ? $b['dormitory_name'] : ($m->dormitory_name ?? ('Общежитие №' . $m->dormitory_id));
+                                    $score = isset($b['score']) && $b['score'] !== null ? $b['score'] : '';
+                                    $streak = !empty($b['confirm_streak']) ? $b['confirm_streak'] : '';
+                                    $isCancelable = ($isAdmin && !in_array($bStatus, ['Отменено', 'cancelled', 'Отмена'])) ? '1' : '0';
+                                ?>
+                                <div class="timeline-slot" 
+                                     onclick="openTimelineModal(this)"
+                                     data-id="<?= $b['id'] ?>"
+                                     data-dorm="<?= e($dName) ?>"
+                                     data-machine="<?= e($mName) ?>"
+                                     data-time="<?= e($dateTimeStr) ?>"
+                                     data-resident="<?= e($fioFull) ?>"
+                                     data-room="<?= e($b['inidroom'] ?? '-') ?>"
+                                     data-status="<?= e($bStatus) ?>"
+                                     data-badge="<?= $badgeCls ?>"
+                                     data-score="<?= e($score) ?>"
+                                     data-streak="<?= e($streak) ?>"
+                                     data-cancelable="<?= $isCancelable ?>"
+                                     style="position: absolute; left: <?= $leftPct ?>%; width: <?= $widthPct ?>%; top: 5px; bottom: 5px; border-radius: 6px; z-index: 5; cursor: pointer; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: <?= $slotBg ?>; color: <?= $slotColor ?>; border: 1px solid <?= $slotBorder ?>; box-shadow: 0 2px 4px rgba(0,0,0,0.08); transition: transform 0.15s ease, box-shadow 0.15s ease;"
+                                     onmouseover="this.style.transform='scale(1.02)'; this.style.zIndex='25'; this.style.boxShadow='0 4px 10px rgba(0,0,0,0.2)';"
+                                     onmouseout="this.style.transform='none'; this.style.zIndex='5'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.08)';"
+                                     title="<?= e($mName . ' | ' . $timeStr . ' | ' . $fioFull . ' (' . $bStatus . ')') ?>">
+                                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <strong><?= $timeStr ?></strong> <?= $fioShort ?>
+                                    </span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+        <!-- Легенда шахматки -->
+        <div style="margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 12px; color: #64748b; padding: 10px 16px; background: #ffffff; border-radius: 8px; border: 1px solid var(--border);">
+            <strong style="color: #1e293b;"><i class="fa-solid fa-palette"></i> Обозначения:</strong>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: #10b981; display: inline-block;"></span> Подтверждено
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: #0284c7; display: inline-block;"></span> Ожидание подтверждения
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: #f59e0b; display: inline-block;"></span> Ожидание
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: #fee2e2; border: 1px dashed #ef4444; display: inline-block;"></span> Отменено
+            </span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 12px; height: 2px; background: #ef4444; display: inline-block;"></span> Текущее время
+            </span>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ БРОНИРОВАНИЯ ИЗ ШАХМАТКИ -->
+    <div id="timelineDetailModal" class="custom-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div class="glass-card" style="width: 100%; max-width: 480px; margin: 20px; padding: 0; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--border);">
+            <div style="padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-calendar-check" style="color: var(--primary);"></i> Бронирование #<span id="tdmId"></span>
+                </h3>
+                <button type="button" onclick="closeTimelineModal()" style="background: transparent; border: none; font-size: 20px; color: #94a3b8; cursor: pointer;">✕</button>
+            </div>
+            <div style="padding: 24px;">
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-building"></i> Общежитие:</span>
+                        <strong id="tdmDorm" style="color: #0369a1;"></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-soap"></i> Машинка:</span>
+                        <strong id="tdmMachine"></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-clock"></i> Время:</span>
+                        <strong id="tdmTime"></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-user"></i> Житель:</span>
+                        <strong id="tdmResident"></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-door-closed"></i> Комната:</span>
+                        <strong id="tdmRoom"></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-tag"></i> Статус:</span>
+                        <span id="tdmStatus"></span>
+                    </div>
+                    <div id="tdmDisciplineRow" style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                        <span style="color: #64748b;"><i class="fa-solid fa-star"></i> Дисциплина:</span>
+                        <span id="tdmDiscipline"></span>
+                    </div>
+                </div>
+
+                <?php if ($isAdmin): ?>
+                <div id="tdmAdminAction" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: none;">
+                    <form method="POST" id="tdmCancelForm" onsubmit="return confirmTimelineCancel(this)">
+                        <input type="hidden" name="cancel_id" id="tdmCancelId" value="">
+                        <input type="hidden" name="cancel_reason" id="tdmCancelReason" value="">
+                        <button type="submit" class="btn btn-danger" style="width: 100%; padding: 10px; font-weight: 600;">
+                            <i class="fa-solid fa-xmark"></i> Отменить бронирование
+                        </button>
+                    </form>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div style="padding: 12px 24px; background: #f8fafc; border-top: 1px solid var(--border); text-align: right;">
+                <button type="button" class="btn btn-secondary" onclick="closeTimelineModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -389,8 +708,123 @@ function confirmSingleCancel(form) {
     return true;
 }
 
+// Переключение между таблицей и шахматкой
+function switchViewMode(mode) {
+    try {
+        localStorage.setItem('laundry_view_mode', mode);
+    } catch (e) {}
+
+    const tableDiv = document.getElementById('tableViewContainer');
+    const timelineDiv = document.getElementById('timelineViewContainer');
+    const tableBtn = document.getElementById('toggleTableBtn');
+    const timelineBtn = document.getElementById('toggleTimelineBtn');
+
+    if (mode === 'timeline') {
+        if (tableDiv) tableDiv.style.display = 'none';
+        if (timelineDiv) timelineDiv.style.display = 'block';
+        if (tableBtn) { tableBtn.classList.remove('btn-primary'); tableBtn.classList.add('btn-secondary'); }
+        if (timelineBtn) { timelineBtn.classList.remove('btn-secondary'); timelineBtn.classList.add('btn-primary'); }
+    } else {
+        if (tableDiv) tableDiv.style.display = 'block';
+        if (timelineDiv) timelineDiv.style.display = 'none';
+        if (tableBtn) { tableBtn.classList.remove('btn-secondary'); tableBtn.classList.add('btn-primary'); }
+        if (timelineBtn) { timelineBtn.classList.remove('btn-primary'); timelineBtn.classList.add('btn-secondary'); }
+    }
+}
+
+// Переключение активного дня на шахматке
+function showTimelineDay(tDate) {
+    document.querySelectorAll('.timeline-day-board').forEach(function(el) {
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.timeline-day-tab').forEach(function(btn) {
+        if (btn.getAttribute('data-date') === tDate) {
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+        } else {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+        }
+    });
+    const targetBoard = document.getElementById('timeline-day-' + tDate);
+    if (targetBoard) {
+        targetBoard.style.display = 'block';
+    }
+}
+
+// Открытие модального окна деталей слота
+function openTimelineModal(el) {
+    const d = el.dataset;
+    document.getElementById('tdmId').innerText = d.id || '';
+    document.getElementById('tdmDorm').innerText = d.dorm || '';
+    document.getElementById('tdmMachine').innerText = d.machine || '';
+    document.getElementById('tdmTime').innerText = d.time || '';
+    document.getElementById('tdmResident').innerText = d.resident || '';
+    document.getElementById('tdmRoom').innerText = d.room || '-';
+
+    const statusEl = document.getElementById('tdmStatus');
+    statusEl.innerText = d.status || '';
+    statusEl.className = 'badge ' + (d.badge || 'badge-secondary');
+
+    const discRow = document.getElementById('tdmDisciplineRow');
+    if (d.score !== undefined && d.score !== '') {
+        discRow.style.display = 'flex';
+        let discHtml = `<strong>${d.score} б.</strong>`;
+        if (d.streak && parseInt(d.streak) >= 2) {
+            discHtml += ` <span style="color:#e11d48; margin-left:6px; font-weight:700;">🔥 ${d.streak}</span>`;
+        }
+        document.getElementById('tdmDiscipline').innerHTML = discHtml;
+    } else {
+        discRow.style.display = 'none';
+    }
+
+    const adminAction = document.getElementById('tdmAdminAction');
+    if (adminAction) {
+        if (d.cancelable === '1') {
+            adminAction.style.display = 'block';
+            document.getElementById('tdmCancelId').value = d.id;
+        } else {
+            adminAction.style.display = 'none';
+        }
+    }
+
+    const modal = document.getElementById('timelineDetailModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeTimelineModal() {
+    const modal = document.getElementById('timelineDetailModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function confirmTimelineCancel(form) {
+    const reason = prompt("Укажите причину отмены (сообщение будет отправлено жителю в бот):", "По решению администратора");
+    if (reason === null) return false;
+    document.getElementById('tdmCancelReason').value = reason.trim() || "По решению администратора";
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     filterMachinesByDormitory();
+
+    // Восстановление сохраненного режима просмотра (таблица или шахматка)
+    try {
+        const savedMode = localStorage.getItem('laundry_view_mode');
+        if (savedMode === 'timeline') {
+            switchViewMode('timeline');
+        }
+    } catch (e) {}
+
+    // Закрытие модального окна по клику вне его или клавише Esc
+    const tModal = document.getElementById('timelineDetailModal');
+    if (tModal) {
+        tModal.addEventListener('click', function(e) {
+            if (e.target === tModal) closeTimelineModal();
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeTimelineModal();
+    });
 
     // Сброс активной подсветки быстрого выбора при ручном изменении дат
     ['dateFromInput', 'dateToInput'].forEach(function(id) {

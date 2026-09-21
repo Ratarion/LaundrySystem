@@ -234,6 +234,68 @@ class BookingController extends BaseController
         }
 
         $bookings    = Booking::getAll($this->pdo, $date_from, $date_to, $status, $dormitory_id, $machine_id, $fio);
+
+        // Экспорт бронирований в CSV
+        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+            if (!$isLoggedIn) {
+                $this->redirect('/login?error=' . urlencode('Для экспорта данных необходимо авторизоваться'));
+            }
+
+            $filename = 'bookings_' . date('Y-m-d_His') . '.csv';
+            header('Content-Type: text/csv; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            $output = fopen('php://output', 'w');
+            fputs($output, "\xEF\xBB\xBF");
+
+            fputcsv($output, [
+                'ID',
+                'Общежитие',
+                'ФИО жителя',
+                'Комната',
+                'Тип машины',
+                'Номер машины',
+                'Дата начала',
+                'Время начала',
+                'Дата окончания',
+                'Время окончания',
+                'Статус',
+                'Баллы дисциплины',
+                'Telegram ID',
+                'VK ID',
+                'MAX ID'
+            ], ';');
+
+            foreach ($bookings as $b) {
+                $startTime = !empty($b['start_time']) ? strtotime($b['start_time']) : null;
+                $endTime   = !empty($b['end_time']) ? strtotime($b['end_time']) : null;
+                $fioRow = trim(($b['last_name'] ?? '') . ' ' . ($b['first_name'] ?? '') . ' ' . ($b['patronymic'] ?? ''));
+
+                fputcsv($output, [
+                    $b['id'] ?? '',
+                    $b['dormitory_name'] ?? ('Общежитие №' . ($b['dormitory_id'] ?? '')),
+                    $fioRow,
+                    $b['inidroom'] ?? '',
+                    $b['type_machine'] ?? '',
+                    $b['number_machine'] ?? '',
+                    $startTime ? date('d.m.Y', $startTime) : '',
+                    $startTime ? date('H:i', $startTime) : '',
+                    $endTime ? date('d.m.Y', $endTime) : '',
+                    $endTime ? date('H:i', $endTime) : '',
+                    $b['status'] ?? '',
+                    $b['score'] ?? '',
+                    $b['tg_id'] ?? '',
+                    $b['vk_id'] ?? '',
+                    $b['max_id'] ?? ''
+                ], ';');
+            }
+
+            fclose($output);
+            exit;
+        }
+
         $dormitories = Dormitory::getAll($this->pdo);
         $machines    = Machine::getAll($this->pdo, $dormitory_id ?: null);
 
