@@ -226,6 +226,10 @@ class HallOfFameController extends BaseController
      */
     public function findResidentByQuery($query, $dormitoryId = null)
     {
+        $query = trim($query);
+        if (mb_strlen($query) < 2) {
+            return null;
+        }
         try {
             $sql = "
                 SELECT id FROM residents
@@ -236,7 +240,8 @@ class HallOfFameController extends BaseController
                       OR last_name ILIKE ?
                   )
             ";
-            $wild = '%' . trim($query) . '%';
+            $escaped = addcslashes($query, '%_\\');
+            $wild = '%' . $escaped . '%';
             $params = [$wild, $wild, $wild];
             if ($dormitoryId) {
                 $sql .= " AND dormitory_id = ?";
@@ -256,6 +261,7 @@ class HallOfFameController extends BaseController
      */
     public function searchResidentsLive($query, $dormitoryId = null)
     {
+        $query = trim($query);
         if (mb_strlen($query) < 2) return [];
         try {
             $sql = "
@@ -270,7 +276,8 @@ class HallOfFameController extends BaseController
                       OR r.last_name ILIKE ?
                   )
             ";
-            $wild = '%' . trim($query) . '%';
+            $escaped = addcslashes($query, '%_\\');
+            $wild = '%' . $escaped . '%';
             $params = [$wild, $wild, $wild];
             if ($dormitoryId) {
                 $sql .= " AND r.dormitory_id = ?";
