@@ -90,8 +90,14 @@ async def set_language(callback: CallbackQuery, state: FSMContext):
     tg_id = callback.from_user.id
     user = await get_user_by_tg_id(tg_id)
 
-    # Удаляем сообщение с выбором языка, чтобы не засорять чат
-    await callback.message.delete()
+    # Удаляем сообщение с выбором языка, чтобы не засорять чат (если сообщение старше 48ч или удаление недоступно - убираем кнопки)
+    try:
+        await callback.message.delete()
+    except Exception:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
 
     if user:
         # --- ЕСЛИ ПОЛЬЗОВАТЕЛЬ УЖЕ ЕСТЬ В БАЗЕ ---
@@ -104,7 +110,10 @@ async def set_language(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(t["auth"])
         await state.set_state(Auth.waiting_for_fio)
     
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception:
+        pass
 
 async def cmd_start_auth(message: Message, state: FSMContext):
     tg_id = message.from_user.id
