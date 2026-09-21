@@ -46,12 +46,6 @@ def get_main_reply_keyboard(lang: str = "RU") -> str:
     kb = (
         Keyboard(one_time=False, inline=False)
         .add(Text(t.get("reply_btn_menu", "🏠 Главное меню")), color=KeyboardButtonColor.PRIMARY)
-        .add(Text(t.get("reply_btn_book", "🧺 Записаться")), color=KeyboardButtonColor.POSITIVE)
-        .row()
-        .add(Text(t.get("reply_btn_my_records", "📋 Мои записи")), color=KeyboardButtonColor.SECONDARY)
-        .add(Text(t.get("reply_btn_settings", "⚙️ Настройки")), color=KeyboardButtonColor.SECONDARY)
-        .row()
-        .add(Text(t.get("reply_btn_info", "ℹ️ Информация")), color=KeyboardButtonColor.SECONDARY)
     )
     return kb.get_json()
 

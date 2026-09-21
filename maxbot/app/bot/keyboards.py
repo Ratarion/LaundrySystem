@@ -36,15 +36,7 @@ def get_main_reply_keyboard(lang: str = "RU") -> KeyboardBuilder:
     t = _t(lang)
     kb = KeyboardBuilder()
     kb.row(
-        MessageButton(t.get("reply_btn_menu", "🏠 Главное меню")),
-        MessageButton(t.get("reply_btn_book", "🧺 Записаться"))
-    )
-    kb.row(
-        MessageButton(t.get("reply_btn_my_records", "📋 Мои записи")),
-        MessageButton(t.get("reply_btn_settings", "⚙️ Настройки"))
-    )
-    kb.row(
-        MessageButton(t.get("reply_btn_info", "ℹ️ Информация"))
+        MessageButton(t.get("reply_btn_menu", "🏠 Главное меню"))
     )
     return kb
 

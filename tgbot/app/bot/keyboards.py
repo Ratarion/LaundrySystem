@@ -24,15 +24,7 @@ def get_main_reply_keyboard(lang: str = "RU") -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text=t.get("reply_btn_menu", "🏠 Главное меню")),
-                KeyboardButton(text=t.get("reply_btn_book", "🧺 Записаться"))
-            ],
-            [
-                KeyboardButton(text=t.get("reply_btn_my_records", "📋 Мои записи")),
-                KeyboardButton(text=t.get("reply_btn_settings", "⚙️ Настройки"))
-            ],
-            [
-                KeyboardButton(text=t.get("reply_btn_info", "ℹ️ Информация"))
+                KeyboardButton(text=t.get("reply_btn_menu", "🏠 Главное меню"))
             ]
         ],
         resize_keyboard=True,
