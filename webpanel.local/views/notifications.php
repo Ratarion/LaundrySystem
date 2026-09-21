@@ -29,8 +29,8 @@
     <div class="glass-card" style="margin-bottom: 20px;">
         <form method="GET" class="form-grid" style="grid-template-columns: 1fr auto auto; align-items: flex-end;">
             <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Фильтр по общежитию</label>
-                <select name="dormitory_id" class="form-control" onchange="this.form.submit()">
+                <label class="form-label" style="display: block; margin-bottom: 8px;">Фильтр по общежитию</label>
+                <select name="dormitory_id" class="form-control" style="height: 42px; box-sizing: border-box;" onchange="this.form.submit()">
                     <option value="">Все общежития</option>
                     <?php foreach ($dormitories as $d): ?>
                         <option value="<?= $d->id ?>" <?= ($dormitory_id == $d->id) ? 'selected' : '' ?>>
@@ -39,9 +39,9 @@
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-secondary">Применить</button>
+            <button type="submit" class="btn btn-secondary" style="height: 42px; box-sizing: border-box;">Применить</button>
             <?php if (!empty($dormitory_id)): ?>
-                <a href="/notifications" class="btn btn-secondary">Сбросить</a>
+                <a href="/notifications" class="btn btn-secondary" style="height: 42px; box-sizing: border-box; display: inline-flex; align-items: center;">Сбросить</a>
             <?php endif; ?>
         </form>
     </div>
@@ -62,13 +62,13 @@
     <!-- Форма отправки -->
     <div class="glass-card">
         <h3 class="card-title"><i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i> Отправить новое уведомление</h3>
-        <form method="POST" class="form-grid" onsubmit="return confirmMassNotification(this);">
+        <form method="POST" class="notification-send-form" onsubmit="return confirmMassNotification(this);" style="display: grid; grid-template-columns: minmax(280px, 1.1fr) minmax(380px, 2fr); gap: 20px; align-items: start;">
             <input type="hidden" name="send_notification" value="1">
             <input type="hidden" name="filter_dormitory_id" value="<?= e($dormitory_id) ?>">
 
-            <div class="form-group" style="flex: 1.2; min-width: 300px;">
-                <label class="form-label">Получатель</label>
-                <select name="resident_id" required class="form-control" id="resident-select">
+            <div class="form-group" style="min-width: 0; margin-bottom: 0;">
+                <label class="form-label" style="display: block; margin-bottom: 8px;">Получатель</label>
+                <select name="resident_id" required class="form-control" id="resident-select" style="height: 42px; box-sizing: border-box;">
                     <option value="">Выберите получателя...</option>
 
                     <optgroup label="📢 Массовая рассылка (всем жильцам)">
@@ -110,24 +110,33 @@
                         <?php endforeach; ?>
                     </optgroup>
                 </select>
-                <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                <small style="font-size: 11px; color: var(--text-muted); margin-top: 6px; display: block; line-height: 1.4;">
                     <i class="fa-solid fa-circle-info"></i> Доступна отправка как отдельному жителю, так и массово всем жильцам.
                 </small>
             </div>
 
-            <div class="form-group" style="flex: 2; min-width: 300px;">
-                <label class="form-label">Текст уведомления</label>
-                <input type="text" name="description" placeholder="Например: Стиральная машина №2 временно на обслуживании" required class="form-control">
-                <small style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+            <div class="form-group" style="min-width: 0; margin-bottom: 0;">
+                <label class="form-label" style="display: block; margin-bottom: 8px;">Текст уведомления</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" name="description" placeholder="Например: Стиральная машина №2 временно на обслуживании" required class="form-control" style="flex: 1; min-width: 0; height: 42px; box-sizing: border-box;">
+                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 22px; white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box;">
+                        <i class="fa-solid fa-paper-plane"></i> Отправить
+                    </button>
+                </div>
+                <small style="font-size: 11px; color: var(--text-muted); margin-top: 6px; display: block; line-height: 1.4;">
                     <i class="fa-solid fa-robot"></i> Сообщение будет доставлено через подключённых ботов (Telegram, VK, MAX).
                 </small>
             </div>
-
-            <button type="submit" class="btn btn-primary" style="height: 42px; margin-bottom: 24px; display: inline-flex; align-items: center; gap: 8px;">
-                <i class="fa-solid fa-paper-plane"></i> Отправить
-            </button>
         </form>
     </div>
+
+    <style>
+    @media (max-width: 860px) {
+        .notification-send-form {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    </style>
 
     <script>
     function confirmMassNotification(form) {
